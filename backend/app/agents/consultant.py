@@ -81,6 +81,12 @@ class ConsultantAgent(BaseAgent):
 
     # ---- 意图识别 ----
     def _classify(self, text: str) -> tuple[Intent, dict]:
+        # 1) 关键词规则（快路径，确定性，毫秒级）
+        rule_intent = self._keyword_classify(text)
+        if rule_intent is not None:
+            return rule_intent, {}
+
+        # 2) LLM（慢路径，只兜底模糊表达）
         if self.llm.available:
             import asyncio
 
@@ -110,20 +116,23 @@ class ConsultantAgent(BaseAgent):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("LLM classify failed: %s", exc)
 
-        # ---- 降级：关键词规则 ----
-        lowered = text.lower()
-        # 1) 先做具体教育话题匹配（精确优先）
+        return Intent.CONSULT, {}
+
+    @staticmethod
+    def _keyword_classify(text: str) -> Intent | None:
+        """关键词规则分类；未命中返回 None（交给 LLM 或默认 consult）。"""
+        # 1) 具体教育话题精确匹配
         for topic in EDU_TOPICS:
             if topic in text:
-                return Intent.EDUCATE, {"topic": topic}
-        # 2) 通用关键词规则
+                return Intent.EDUCATE
+        # 2) 通用关键词（顺序敏感：高特异性意图在前）
         for intent, keywords in KEYWORD_RULES:
             if any(k in text for k in keywords):
-                return intent, {}
-        # 3) "什么是X"类提问，未命中具体话题 → 咨询
+                return intent
+        # 3) "什么是X"类提问 → 咨询
         if any(k in text for k in ("什么是", "是什么", "啥是", "啥叫")):
-            return Intent.CONSULT, {}
-        return Intent.CONSULT, {}
+            return Intent.CONSULT
+        return None
 
     # ---- 各意图处理 ----
     def _handle_consult(self, user_input: str) -> str:
@@ -244,7 +253,9 @@ class ConsultantAgent(BaseAgent):
             return None
 
     def _humanize_risks(self, risks: list[RiskItem], summary: str) -> str:
-        """把风险清单转成通俗报告。"""
+        """把风险清单转成通俗报告，末尾自动附术语解释。"""
+        from ..kb.glossary import glossary_footer
+
         if not risks:
             return f"🛡️ {summary}，未发现明显风险，继续保持！\n\n（提示：本检测为轻量级，无法替代专业杀毒软件）"
 
@@ -263,7 +274,10 @@ class ConsultantAgent(BaseAgent):
             if r.pid:
                 lines.append(f"   🆔 PID：{r.pid}（回复「结束进程 {r.pid}」可处置）")
             lines.append("")
-        return "\n".join(lines)
+        report = "\n".join(lines)
+        # 术语小课堂：把报告中的专业词自动翻译成大白话
+        report += glossary_footer(report)
+        return report
 
     @staticmethod
     def _extract_pid(text: str) -> Optional[int]:

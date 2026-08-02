@@ -96,6 +96,53 @@ class LLMClient:
             logger.warning("LLM JSON parse failed, using fallback: %r", text[:100])
             return fallback
 
+    async def stream_chat(
+        self,
+        messages: list[dict],
+        system: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: float = 0.7,
+    ):
+        """流式对话：异步生成器，逐块产出文本。失败时产出 None 结束。"""
+        if not self.available:
+            logger.warning("LLM not configured: DEEPSEEK_API_KEY missing")
+            return
+        payload_messages: list[dict] = []
+        if system:
+            payload_messages.append({"role": "system", "content": system})
+        payload_messages.extend(messages)
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                async with client.stream(
+                    "POST",
+                    self.chat_url,
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json={
+                        "model": self.model,
+                        "messages": payload_messages,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens or settings.LLM_MAX_TOKENS,
+                        "stream": True,
+                    },
+                ) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data)
+                            delta = chunk["choices"][0]["delta"].get("content")
+                            if delta:
+                                yield delta
+                        except (json.JSONDecodeError, KeyError, IndexError):
+                            continue
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("LLM stream failed: %s", exc)
+
 
 _llm_client: Optional[LLMClient] = None
 

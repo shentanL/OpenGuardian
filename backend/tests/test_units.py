@@ -10,9 +10,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.agents.analyst import AnalystAgent  # noqa: E402
 from app.agents.consultant import ConsultantAgent, EDU_TOPICS  # noqa: E402
-from app.agents.detector import SYSTEM_PROCESSES, _match_pattern, DetectorAgent  # noqa: E402
+from app.agents.detector import (  # noqa: E402
+    MALWARE_PATTERNS,
+    SYSTEM_PROCESSES,
+    _match_pattern,
+    DetectorAgent,
+)
 from app.agents.educator import CASES, EducatorAgent  # noqa: E402
 from app.agents.executor import AUDIT_LOG, ExecutorAgent  # noqa: E402
+from app.kb.glossary import GLOSSARY, explain_terms, lookup  # noqa: E402
 from app.schemas import AgentTask, Intent  # noqa: E402
 
 
@@ -24,13 +30,24 @@ class TestDetector(unittest.TestCase):
     def test_malware_pattern_hit(self):
         hit = _match_pattern("xmrig.exe", r"C:\Users\x\miner\xmrig.exe")
         self.assertIsNotNone(hit)
-        self.assertIn("挖矿", hit[0])
+        label, desc, level = hit
+        self.assertIn("挖矿", label)
+        self.assertEqual(level.value, "critical")
 
     def test_benign_process_no_hit(self):
         self.assertIsNone(_match_pattern("chrome.exe", r"C:\Program Files\Google\Chrome\chrome.exe"))
 
     def test_whitelist_contains_system(self):
         self.assertIn("svchost.exe", SYSTEM_PROCESSES)
+
+    def test_signature_library_size(self):
+        self.assertGreaterEqual(len(MALWARE_PATTERNS), 50, "特征库应 ≥50 条以支撑识别率指标")
+
+    def test_signature_categories(self):
+        names = [p[1] for p in MALWARE_PATTERNS]
+        self.assertTrue(any("挖矿" in n for n in names))
+        self.assertTrue(any("勒索" in n for n in names))
+        self.assertTrue(any("远控" in n or "RAT" in n for n in names))
 
     def test_scans_run_without_error(self):
         agent = DetectorAgent()
@@ -93,6 +110,28 @@ class TestConsultant(unittest.TestCase):
     def test_extract_pid(self):
         self.assertEqual(self.consultant._extract_pid("结束进程 1234"), 1234)
         self.assertIsNone(self.consultant._extract_pid("帮我检测电脑"))
+
+
+class TestGlossary(unittest.TestCase):
+    def test_library_size(self):
+        self.assertGreaterEqual(len(GLOSSARY), 40, "术语库应 ≥40 主条目")
+
+    def test_lookup(self):
+        entry = lookup("木马")
+        self.assertIsNotNone(entry)
+        self.assertIn("plain", entry)
+        # 变体也能查
+        self.assertIsNotNone(lookup("xmrig"))
+        self.assertIsNotNone(lookup("2FA"))
+
+    def test_explain_terms(self):
+        items = explain_terms("检测到 keylogger 和反弹shell，CPU 占用 95%")
+        terms = [i["term"] for i in items]
+        self.assertIn("键盘记录器", terms)
+        self.assertIn("反弹shell", terms)
+
+    def test_lookup_unknown_returns_none(self):
+        self.assertIsNone(lookup("不存在的术语xyz"))
 
 
 if __name__ == "__main__":

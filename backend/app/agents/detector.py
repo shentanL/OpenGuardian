@@ -18,17 +18,87 @@ from .base import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-# ---- 轻量特征库（MVP 版，可扩展）----
-# 已知恶意软件进程名 / 路径片段
-MALWARE_PATTERNS: list[tuple[str, str, str]] = [
-    # (匹配关键字, 名称, 描述)
-    ("miner", "挖矿程序", "加密货币挖矿木马，会持续占用 CPU/GPU"),
-    ("xmrig", "XMRig 挖矿器", "门罗币挖矿程序，常被植入他人电脑"),
-    ("cryptominer", "挖矿程序", "加密货币挖矿恶意软件"),
-    ("keylogger", "键盘记录器", "记录你输入的所有内容，可窃取密码"),
-    ("trojan", "木马程序", "伪装成正常软件的恶意程序"),
-    ("rat.exe", "远控木马", "允许黑客远程控制你的电脑"),
-    ("backdoor", "后门程序", "黑客预留的远程入侵通道"),
+# ---- 恶意软件特征库（按威胁分类）----
+# 格式: (匹配关键字, 名称, 描述, 风险级别)
+# 关键字小写，匹配"进程名+路径"组合；同族软件聚合为一条
+MALWARE_PATTERNS: list[tuple[str, str, str, RiskLevel]] = [
+    # ---- 挖矿类（CPU 侵占）----
+    ("xmrig", "挖矿木马", "门罗币挖矿器，常被静默植入他人电脑挖矿", RiskLevel.CRITICAL),
+    ("minergate", "挖矿程序", "自带图形界面的挖矿工具，也常被捆绑安装", RiskLevel.HIGH),
+    ("ethminer", "以太坊挖矿器", "ETH 挖矿程序，异常占用 GPU", RiskLevel.HIGH),
+    ("claymore", "挖矿程序", "Claymore 双挖矿器，常被木马携带", RiskLevel.HIGH),
+    ("ccminer", "挖矿程序", "NVIDIA GPU 挖矿器变体", RiskLevel.HIGH),
+    ("cpuminer", "挖矿程序", "CPU 挖矿器，导致电脑卡顿发热", RiskLevel.CRITICAL),
+    ("lolminer", "挖矿程序", "LOLMiner 挖矿器", RiskLevel.HIGH),
+    ("nbminer", "挖矿程序", "NBMiner 挖矿器，常隐藏运行", RiskLevel.HIGH),
+    ("teamredminer", "挖矿程序", "AMD GPU 挖矿器", RiskLevel.HIGH),
+    ("phoenixminer", "挖矿程序", "PhoenixMiner 挖矿器", RiskLevel.HIGH),
+    ("t-rex", "挖矿程序", "T-Rex 挖矿器，GPU 占用异常", RiskLevel.HIGH),
+    ("wildrig", "挖矿程序", "WildRig 挖矿器", RiskLevel.HIGH),
+    ("nanominer", "挖矿程序", "NanoMiner 挖矿器", RiskLevel.HIGH),
+    ("gminer", "挖矿程序", "Gminer 多算法挖矿器", RiskLevel.HIGH),
+    ("cryptonight", "挖矿内核", "Cryptonight 挖矿算法内核，常用于木马捆绑", RiskLevel.CRITICAL),
+    ("miner", "挖矿程序", "通用挖矿程序特征", RiskLevel.HIGH),
+    ("cryptominer", "挖矿木马", "加密货币挖矿恶意软件", RiskLevel.CRITICAL),
+
+    # ---- 远控/木马类（远程控制）----
+    ("njrat", "NjRAT 远控木马", "中东地区流行的远控木马，可开摄像头、录键盘", RiskLevel.CRITICAL),
+    ("asyncrat", "AsyncRAT 远控木马", "开源远控木马，常通过钓鱼邮件传播", RiskLevel.CRITICAL),
+    ("quasar", "Quasar RAT", "开源远控木马，可窃取文件与屏幕", RiskLevel.CRITICAL),
+    ("darkcomet", "DarkComet 远控", "老牌远控木马，功能全面", RiskLevel.CRITICAL),
+    ("remcos", "Remcos RAT", "商业级远控木马，常被恶意利用", RiskLevel.CRITICAL),
+    ("nanocore", "NanoCore RAT", ".NET 远控木马，窃取凭据", RiskLevel.CRITICAL),
+    ("orcus", "Orcus RAT", "功能强大的远控木马", RiskLevel.CRITICAL),
+    ("lime", "LimeRAT", "轻量远控木马，窃取浏览器密码", RiskLevel.CRITICAL),
+    ("gh0st", "Gh0st 远控", "经典中国红队/黑产远控木马", RiskLevel.CRITICAL),
+    ("pcshare", "PCShare 远控", "灰鸽子同源远控木马", RiskLevel.CRITICAL),
+    ("trojan", "木马程序", "通用木马特征", RiskLevel.CRITICAL),
+    ("rat.exe", "远控木马", "允许黑客远程控制你的电脑", RiskLevel.CRITICAL),
+    ("backdoor", "后门程序", "黑客预留的远程入侵通道", RiskLevel.CRITICAL),
+    ("hacktool", "黑客工具", "可能被恶意利用的黑客工具", RiskLevel.HIGH),
+    ("cobaltstrike", "Cobalt Strike", "红队渗透工具，常被黑客用来控制服务器", RiskLevel.CRITICAL),
+    ("mimikatz", "Mimikatz", "窃取 Windows 密码哈希的工具，常被木马携带", RiskLevel.CRITICAL),
+
+    # ---- 勒索类（文件加密）----
+    ("wannacry", "WannaCry 勒索病毒", "2017 年席卷全球的勒索蠕虫", RiskLevel.CRITICAL),
+    ("locky", "Locky 勒索病毒", "通过邮件附件传播的勒索病毒", RiskLevel.CRITICAL),
+    ("cerber", "Cerber 勒索病毒", "RaaS 模式勒索病毒", RiskLevel.CRITICAL),
+    ("gandcrab", "GandCrab 勒索病毒", "曾是最活跃的勒索病毒家族", RiskLevel.CRITICAL),
+    ("ryuk", "Ryuk 勒索病毒", "定向攻击企业的勒索病毒", RiskLevel.CRITICAL),
+    ("netwalker", "NetWalker 勒索病毒", "勒索即服务家族", RiskLevel.CRITICAL),
+    ("revil", "REvil 勒索病毒", "重大勒索攻击的幕后黑手", RiskLevel.CRITICAL),
+    ("darkside", "DarkSide 勒索病毒", "曾攻击美国输油管道", RiskLevel.CRITICAL),
+    ("conti", "Conti 勒索病毒", "活跃的勒索即服务团伙", RiskLevel.CRITICAL),
+    ("lockbit", "LockBit 勒索病毒", "自动化程度极高的勒索家族", RiskLevel.CRITICAL),
+    ("maze", "Maze 勒索病毒", "双重勒索模式的先驱", RiskLevel.CRITICAL),
+    ("petya", "Petya 勒索病毒", "加密整个磁盘的勒索病毒", RiskLevel.CRITICAL),
+    ("notpetya", "NotPetya", "伪装成勒索的破坏性蠕虫", RiskLevel.CRITICAL),
+    ("badrabbit", "Bad Rabbit 勒索", "通过伪 Flash 更新传播", RiskLevel.CRITICAL),
+    ("ransomware", "勒索软件", "通用勒索软件特征", RiskLevel.CRITICAL),
+
+    # ---- 间谍/键盘记录类（信息窃取）----
+    ("keylogger", "键盘记录器", "记录你输入的所有内容，可窃取密码", RiskLevel.CRITICAL),
+    ("ardamax", "Ardamax Keylogger", "商业键盘记录器", RiskLevel.CRITICAL),
+    ("spyrix", "Spyrix 间谍软件", "监控+键盘记录间谍软件", RiskLevel.CRITICAL),
+    ("refog", "Refog 监控软件", "键盘记录与屏幕监控软件", RiskLevel.HIGH),
+    ("elitekeylogger", "Elite 键盘记录器", "隐藏式键盘记录器", RiskLevel.CRITICAL),
+    ("spyware", "间谍软件", "通用间谍软件特征", RiskLevel.HIGH),
+    ("stealer", "信息窃取木马", "专门窃取浏览器密码/钱包的木马", RiskLevel.CRITICAL),
+    ("redline", "RedLine 窃密木马", "流行的信息窃取木马", RiskLevel.CRITICAL),
+    ("raccoon", "Raccoon 窃密木马", "Stealer 即服务家族的窃密木马", RiskLevel.CRITICAL),
+    ("azorult", "Azorult 窃密木马", "窃取凭据与加密货币的木马", RiskLevel.CRITICAL),
+    ("formbook", "FormBook 窃密木马", "通过钓鱼邮件传播的窃密木马", RiskLevel.CRITICAL),
+    ("agenttesla", "Agent Tesla", "流行的键盘记录+窃密木马", RiskLevel.CRITICAL),
+
+    # ---- 僵尸网络/银行木马类 ----
+    ("mirai", "Mirai 僵尸网络", "物联网僵尸网络，也可感染 PC", RiskLevel.CRITICAL),
+    ("zeus", "Zeus 银行木马", "老牌银行木马，窃取网银凭据", RiskLevel.CRITICAL),
+    ("citadel", "Citadel 银行木马", "Zeus 变体银行木马", RiskLevel.CRITICAL),
+    ("spyeye", "SpyEye 银行木马", "银行信息窃取木马", RiskLevel.CRITICAL),
+    ("trickbot", "TrickBot 银行木马", "模块化银行木马，常投递勒索软件", RiskLevel.CRITICAL),
+    ("emotet", "Emotet 木马", "顶级恶意软件分发平台", RiskLevel.CRITICAL),
+    ("qakbot", "QakBot 银行木马", "活跃的银行木马与分发器", RiskLevel.CRITICAL),
+    ("botnet", "僵尸网络客户端", "被黑客远程控制的木马客户端", RiskLevel.CRITICAL),
 ]
 
 # 常见反弹 shell / 恶意端口
@@ -52,12 +122,12 @@ SYSTEM_PROCESSES = {
 USER_WHITELIST: set[str] = set()
 
 
-def _match_pattern(name: str, path: str) -> tuple[str, str] | None:
-    """命中特征库则返回 (名称, 描述)，否则 None。"""
+def _match_pattern(name: str, path: str) -> tuple[str, str, RiskLevel] | None:
+    """命中特征库则返回 (名称, 描述, 级别)，否则 None。"""
     haystack = f"{name.lower()} {path.lower()}"
-    for keyword, label, desc in MALWARE_PATTERNS:
+    for keyword, label, desc, level in MALWARE_PATTERNS:
         if keyword in haystack:
-            return label, desc
+            return label, desc, level
     return None
 
 
@@ -109,12 +179,12 @@ class DetectorAgent(BaseAgent):
                     # 1) 特征库命中
                     hit = _match_pattern(name, exe)
                     if hit:
-                        label, desc = hit
+                        label, desc, level = hit
                         risks.append(RiskItem(
                             item_type="process",
                             name=name,
                             detail=f"进程名/路径匹配已知恶意特征；CPU {cpu:.1f}%，内存 {mem:.1f}%",
-                            level=RiskLevel.CRITICAL,
+                            level=level,
                             suggestion=f"强烈建议立即结束该进程并运行全盘杀毒扫描。{desc}",
                             pid=pid,
                         ))

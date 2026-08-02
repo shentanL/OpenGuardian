@@ -1,6 +1,7 @@
 """OpenGuardian FastAPI 主入口。"""
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 
@@ -95,6 +96,63 @@ def chat(req: ChatRequest) -> ChatResponse:
         needs_confirmation=bool(data.get("needs_confirmation", False)),
         execute_hint=data.get("execute_hint"),
         session_id=session_id,
+    )
+
+
+@app.post("/api/chat/stream")
+async def chat_stream(req: ChatRequest):
+    """流式聊天（SSE）。咨询/教育类用 LLM 流式输出；其他意图先返回结构化 JSON 事件。
+
+    事件格式（text/event-stream）：
+      data: {"type": "intent", "intent": "consult"}
+      data: {"type": "token", "text": "..."}     # 流式文本块
+      data: {"type": "result", "reply": "...", "risks": [...], ...}  # 最终结果
+      data: {"type": "done"}
+    """
+    from fastapi.responses import StreamingResponse
+    from fastapi.concurrency import run_in_threadpool
+
+    # 意图识别（同步方法丢线程池，避免阻塞事件循环）
+    intent, _ = await run_in_threadpool(consultant._classify, req.message)
+
+    async def event_gen():
+        # 1) 先发意图事件
+        yield f'data: {json.dumps({"type": "intent", "intent": intent.value}, ensure_ascii=False)}\n\n'
+
+        if intent in (Intent.CONSULT, Intent.EDUCATE):
+            # 2) 流式 LLM 输出
+            system = (
+                "你是 OpenGuardian——面向普通用户的个人数字安全助手。"
+                "回答要求：通俗易懂、不超过 200 字、给出可操作建议。"
+            )
+            chunks: list[str] = []
+            async for token in consultant.llm.stream_chat(
+                [{"role": "user", "content": req.message}], system=system
+            ):
+                chunks.append(token)
+                yield f'data: {json.dumps({"type": "token", "text": token}, ensure_ascii=False)}\n\n'
+            reply = "".join(chunks) or "（服务暂时无法连接 AI，请稍后再试）"
+            yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
+        else:
+            # 3) 其他意图：完整处理后一次性返回
+            task = AgentTask(intent=Intent.CONSULT, params={}, user_input=req.message)
+            result = await run_in_threadpool(consultant.handle, task)
+            data = result.data or {}
+            payload = {
+                "reply": result.message,
+                "intent": data.get("intent", "consult"),
+                "risks": [r.model_dump() for r in result.risks],
+                "needs_confirmation": bool(data.get("needs_confirmation", False)),
+                "execute_hint": data.get("execute_hint"),
+            }
+            yield f'data: {json.dumps(payload, ensure_ascii=False)}\n\n'
+
+        yield "data: {\"type\": \"done\"}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

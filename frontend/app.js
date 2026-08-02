@@ -106,25 +106,80 @@
     sendBtn.disabled = true;
 
     try {
-      const resp = await fetch("/api/chat", {
+      // 流式接口（SSE）
+      const resp = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, session_id: sessionId }),
       });
       if (!resp.ok) throw new Error("HTTP " + resp.status);
-      const data = await resp.json();
-      sessionId = data.session_id || sessionId;
+      if (!resp.body) throw new Error("无响应体");
 
-      typing.remove();
-      let html = escapeHtml(data.reply).replace(/\n/g, "<br>");
-      html += renderRisks(data.risks);
-      addMsg("bot", html);
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let botMsg = null;
+      let botText = "";
+      let finalData = null;
 
-      if (data.needs_confirmation && data.execute_hint) {
-        const { pid } = data.execute_hint;
-        pendingExecute = { pid };
-        confirmText.textContent = `OpenGuardian 建议处置进程（PID ${pid}）。确定要结束它吗？`;
-        modal.classList.remove("hidden");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // 按 SSE 事件边界拆分（空行分隔）
+        const events = buffer.split("\n\n");
+        buffer = events.pop();
+
+        for (const evt of events) {
+          for (const line of evt.split("\n")) {
+            if (!line.startsWith("data:")) continue;
+            let data;
+            try { data = JSON.parse(line.slice(5).trim()); } catch { continue; }
+
+            if (data.type === "token") {
+              botText += data.text;
+              if (!botMsg) {
+                typing.remove();
+                botMsg = addMsg("bot", "");
+              }
+              botMsg.querySelector(".bubble").innerHTML = escapeHtml(botText).replace(/\n/g, "<br>");
+              chatEl.scrollTop = chatEl.scrollHeight;
+            } else if (data.type === "result") {
+              finalData = data;
+            }
+          }
+        }
+      }
+      // 处理剩余 buffer
+      for (const line of buffer.split("\n")) {
+        if (!line.startsWith("data:")) continue;
+        try {
+          const data = JSON.parse(line.slice(5).trim());
+          if (data.type === "result") finalData = data;
+        } catch { /* ignore */ }
+      }
+
+      if (finalData) {
+        if (!botMsg) typing.remove();
+        let html = escapeHtml(finalData.reply || "").replace(/\n/g, "<br>");
+        html += renderRisks(finalData.risks || []);
+        if (botMsg) {
+          botMsg.querySelector(".bubble").innerHTML = html;
+        } else {
+          addMsg("bot", html);
+        }
+        sessionId = finalData.session_id || sessionId;
+
+        if (finalData.needs_confirmation && finalData.execute_hint) {
+          const { pid } = finalData.execute_hint;
+          pendingExecute = { pid };
+          confirmText.textContent = `OpenGuardian 建议处置进程（PID ${pid}）。确定要结束它吗？`;
+          modal.classList.remove("hidden");
+        }
+      } else if (!botMsg) {
+        typing.remove();
+        addMsg("bot", "⚠️ 未收到有效回复");
       }
     } catch (err) {
       typing.remove();

@@ -80,8 +80,8 @@ class TestExecutor(unittest.TestCase):
 
 
 class TestEducator(unittest.TestCase):
-    def test_case_library_has_5_topics(self):
-        self.assertEqual(len(CASES), 5)
+    def test_case_library_size(self):
+        self.assertGreaterEqual(len(CASES), 10, "案例库应 ≥10 个（含反诈新案例）")
 
     def test_phishing_case_returns(self):
         result = EducatorAgent().handle(_task(Intent.EDUCATE, topic="钓鱼邮件"))

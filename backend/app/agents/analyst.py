@@ -2,23 +2,53 @@
 
 能力：
 1. 密码强度评估（长度/字符集/常见弱密码）
-2. 常见弱密码库检查
+2. 常见弱密码库检查（从 kb_data/passwords.txt 加载，1479+ 条）
 3. 提供加固建议
 """
 from __future__ import annotations
 
+import logging
 import re
+from pathlib import Path
 
 from ..schemas import AgentResult, AgentTask, RiskItem, RiskLevel
 from .base import BaseAgent
 
-# 常见弱密码（MVP 子集）
-WEAK_PASSWORDS = {
+logger = logging.getLogger(__name__)
+
+# 内嵌兜底弱密码（数据文件缺失时使用）
+_FALLBACK_WEAK = {
     "123456", "password", "12345678", "qwerty", "abc123",
     "111111", "123123", "admin", "letmein", "welcome",
     "1234567890", "password1", "iloveyou", "1q2w3e4r",
     "000000", "123456789", "666666", "88888888", "a123456",
 }
+
+_PW_FILE = Path(__file__).resolve().parent.parent.parent / "kb_data" / "passwords.txt"
+
+_weak_cache: set[str] | None = None
+
+
+def _load_weak_passwords() -> set[str]:
+    """加载弱密码库（带缓存）；数据文件缺失时回退内置集。"""
+    global _weak_cache
+    if _weak_cache is not None:
+        return _weak_cache
+    try:
+        if _PW_FILE.exists():
+            with open(_PW_FILE, encoding="utf-8") as f:
+                _weak_cache = {
+                    line.strip() for line in f
+                    if line.strip() and not line.startswith("#")
+                }
+            logger.info("弱密码库加载: %d 条（%s）", len(_weak_cache), _PW_FILE.name)
+        else:
+            _weak_cache = set(_FALLBACK_WEAK)
+            logger.warning("弱密码数据文件缺失，使用内置 %d 条兜底", len(_weak_cache))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("弱密码库加载失败: %s，使用内置兜底", exc)
+        _weak_cache = set(_FALLBACK_WEAK)
+    return _weak_cache
 
 # 常见危险习惯关键词（用于文本分析）
 RISKY_KEYWORDS = [
@@ -62,11 +92,11 @@ class AnalystAgent(BaseAgent):
         risks: list[RiskItem] = []
         if not pwd:
             return risks
-        if pwd in WEAK_PASSWORDS:
+        if pwd in _load_weak_passwords():
             risks.append(RiskItem(
                 item_type="asset",
                 name="弱密码",
-                detail="该密码在常见弱密码库中，极易被暴力破解",
+                detail="该密码在常见弱密码库（含中文弱密码 Top 1000）中，极易被暴力破解",
                 level=RiskLevel.CRITICAL,
                 suggestion="立即更换为 12 位以上、包含大小写字母+数字+符号的强密码",
             ))

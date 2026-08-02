@@ -45,7 +45,10 @@ KEYWORD_RULES: list[tuple[Intent, list[str]]] = [
 ]
 
 # 可科普的教育话题（供 educator 使用）
-EDU_TOPICS = ["钓鱼邮件", "假冒网站", "勒索病毒", "账号泄露", "免费WiFi"]
+EDU_TOPICS = [
+    "钓鱼邮件", "假冒网站", "勒索病毒", "账号泄露", "免费WiFi",
+    "刷单", "杀猪盘", "校园贷", "游戏账号交易", "AI换脸", "演唱会门票",
+]
 
 
 class ConsultantAgent(BaseAgent):

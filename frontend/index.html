@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenGuardian · AI 数字安全助手</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="logo">🛡️ OpenGuardian</div>
+    <div class="status"><span class="dot"></span><span id="status-text">连接中…</span></div>
+  </header>
+
+  <main id="chat" class="chat">
+    <div class="msg bot">
+      <div class="avatar">🛡️</div>
+      <div class="bubble">
+        你好！我是 OpenGuardian，你的 AI 个人数字安全助手。<br><br>
+        你可以对我说：<br>
+        · <b>「帮我检测一下电脑」</b> — 扫描进程/网络/资源风险<br>
+        · <b>「什么是钓鱼邮件？」</b> — 安全知识咨询<br>
+        · <b>「检查密码 123456」</b> — 密码强度评估<br>
+        · <b>「讲讲勒索病毒」</b> — 安全案例科普
+      </div>
+    </div>
+  </main>
+
+  <footer class="inputbar">
+    <input id="input" type="text" placeholder="输入你的问题…（Enter 发送）" autocomplete="off">
+    <button id="send">发送</button>
+  </footer>
+</div>
+
+<!-- 处置确认弹窗 -->
+<div id="confirm-modal" class="modal hidden">
+  <div class="modal-box">
+    <h3>⚠️ 确认处置</h3>
+    <p id="confirm-text">确定要执行该操作吗？</p>
+    <div class="modal-actions">
+      <button id="confirm-cancel" class="btn-ghost">取消</button>
+      <button id="confirm-ok" class="btn-danger">确认执行</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

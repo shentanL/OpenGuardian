@@ -139,6 +139,7 @@ async def chat_stream(req: ChatRequest):
             result = await run_in_threadpool(consultant.handle, task)
             data = result.data or {}
             payload = {
+                "type": "result",
                 "reply": result.message,
                 "intent": data.get("intent", "consult"),
                 "risks": [r.model_dump() for r in result.risks],

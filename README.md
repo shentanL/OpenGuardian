@@ -76,9 +76,21 @@ python -m venv .venv
 .venv/Scripts/activate
 pip install -r requirements.txt
 # 配置 .env（DEEPSEEK_API_KEY=sk-xxx）
-uvicorn app.main:app --reload --port 8000
-# 浏览器打开 http://localhost:8000
+uvicorn app.main:app --reload --port 8300
+# 浏览器打开 http://localhost:8300
 ```
+
+> 注意：Windows 上 8000/8100 等端口可能落在 Hyper-V 保留范围内（`netsh interface ipv4 show excludedportrange protocol=tcp` 可查），推荐用 8300。
+
+## ✅ 测试
+
+```bash
+cd backend
+python -m unittest discover -s tests -p "test_*.py"   # 单元 + API 集成测试
+```
+
+- `test_units.py` — 确定性单元测试（LLM 离线降级路径），无需网络
+- `test_api.py` — API 集成测试，服务未运行时自动跳过
 
 ## 📌 量化目标
 

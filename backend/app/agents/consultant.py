@@ -97,6 +97,13 @@ class ConsultantAgent(BaseAgent):
                 try:
                     intent = Intent(intent_str)
                     params = data.get("params") or {}
+                    # 规则叠加：LLM 判为 educate 但无具体话题且是"什么是X"句式 → 转 consult
+                    if (
+                        intent == Intent.EDUCATE
+                        and not any(t in text for t in EDU_TOPICS)
+                        and any(k in text for k in ("什么是", "是什么", "啥是", "啥叫"))
+                    ):
+                        return Intent.CONSULT, {}
                     return intent, params
                 except ValueError:
                     logger.warning("Unknown intent from LLM: %r", intent_str)

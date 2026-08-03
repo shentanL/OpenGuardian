@@ -202,58 +202,53 @@ class AnalystAgent(BaseAgent):
 
         return risks
     def _check_password(self, pwd: str) -> list[RiskItem]:
+        """密码强度评估：zxcvbn（Dropbox 开源，714⭐ GitHub）。
+
+        评分 0-4：
+          0 = 即时可破（10^3 种组合以内）
+          1 = 极易破解（10^6）
+          2 = 较难破解（10^8）
+          3 = 难以破解（10^10）
+          4 = 极难破解（10^13）
+        """
         risks: list[RiskItem] = []
         if not pwd:
             return risks
-        if pwd in _load_weak_passwords():
-            risks.append(RiskItem(
-                item_type="asset",
-                name="弱密码",
-                detail="该密码在常见弱密码库（含中文弱密码 Top 1000）中，极易被暴力破解",
-                level=RiskLevel.CRITICAL,
-                suggestion="立即更换为 12 位以上、包含大小写字母+数字+符号的强密码",
-            ))
-            return risks
 
-        length = len(pwd)
-        has_lower = bool(re.search(r"[a-z]", pwd))
-        has_upper = bool(re.search(r"[A-Z]", pwd))
-        has_digit = bool(re.search(r"\d", pwd))
-        has_symbol = bool(re.search(r"[^A-Za-z0-9]", pwd))
-        score = sum([has_lower, has_upper, has_digit, has_symbol])
+        try:
+            from zxcvbn import zxcvbn
 
-        if length < 8:
-            risks.append(RiskItem(
-                item_type="asset",
-                name="密码过短",
-                detail=f"长度仅 {length} 位（建议 ≥12 位）",
-                level=RiskLevel.HIGH,
-                suggestion="加长密码：用一句只有你知道的话的首字母+数字+符号组合",
-            ))
-        if length < 12 and score >= 3:
-            risks.append(RiskItem(
-                item_type="asset",
-                name="密码强度一般",
-                detail=f"{length} 位，字符类型 {score}/4 种",
-                level=RiskLevel.MEDIUM,
-                suggestion="建议增加到 12 位以上，混合大小写、数字和符号",
-            ))
-        if score <= 1 and length >= 12:
-            risks.append(RiskItem(
-                item_type="asset",
-                name="密码类型单一",
-                detail="只用了 1 种字符类型，容易被字典攻击",
-                level=RiskLevel.MEDIUM,
-                suggestion="在密码中加入大小写字母、数字和符号的混合",
-            ))
-        if not risks:
-            risks.append(RiskItem(
-                item_type="asset",
-                name="密码强度良好",
-                detail=f"{length} 位，{score}/4 种字符类型",
-                level=RiskLevel.LOW,
-                suggestion="继续保持！建议为每个重要账号使用不同密码",
-            ))
+            result = zxcvbn(pwd)
+            score = result["score"]
+            feedback = result.get("feedback", {})
+            warning = (feedback.get("warning") or "").strip()
+            suggestions = feedback.get("suggestions") or []
+            guesses_log10 = result.get("guesses_log10", 0)
+
+            if score <= 1:
+                risks.append(RiskItem(
+                    item_type="asset", name="密码极弱",
+                    detail=f"zxcvbn 评分 {score}/4（约 {10**guesses_log10:.0e} 次尝试可破解）。{warning}",
+                    level=RiskLevel.CRITICAL,
+                    suggestion=("立即更换： " + ("；".join(suggestions[:3]) if suggestions
+                        else "至少 12 位，混合大小写+数字+符号，不用常见词")),
+                ))
+            elif score == 2:
+                risks.append(RiskItem(
+                    item_type="asset", name="密码中等",
+                    detail=f"zxcvbn 评分 2/4，有一定破解风险。{warning}",
+                    level=RiskLevel.MEDIUM,
+                    suggestion=("建议强化：" + ("；".join(suggestions[:2]) if suggestions else "增加长度和复杂度")),
+                ))
+            # score 3-4: 安全
+        except ImportError:
+            if pwd in _load_weak_passwords():
+                risks.append(RiskItem(
+                    item_type="asset", name="弱密码",
+                    detail="该密码在常见弱密码库中，极易被暴力破解",
+                    level=RiskLevel.CRITICAL,
+                    suggestion="立即更换为 12 位以上、包含大小写字母+数字+符号的强密码",
+                ))
         return risks
 
     # ---- 安全习惯 ----

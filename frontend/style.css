@@ -269,15 +269,28 @@ body {
 }
 .panel h3::before { content: "▮ "; }
 .panel.span2 { grid-column: span 2; }
-/* ═══ 风险环形图（Grafana donut）═══ */
-.risk-top { position: relative; display: flex; justify-content: center; margin-bottom: 10px; }
-.risk-donut { width: 130px; height: 130px; }
-.donut-center {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  text-align: center; pointer-events: none;
+/* ═══ 等级卡（Splunk/Defender 风格）═══ */
+.lv-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.lv-card {
+  border: 1px solid var(--gray-border); border-radius: 2px;
+  padding: 10px 8px; text-align: center; background: #0a0a0a;
+  border-top: 2px solid var(--gray-600);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
-.donut-center #donut-total { font-family: var(--mono); font-size: 26px; font-weight: 800; color: var(--white); line-height: 1; }
-.donut-center .donut-cap { font-size: 9px; color: var(--gray-400); letter-spacing: 1.5px; margin-top: 2px; }
+.lv-card:hover { transform: translateY(-1px); }
+.lv-card.on { box-shadow: 0 0 10px rgba(255, 255, 255, 0.04); }
+.lv-card.lv-crit.on { border-top-color: #e52020; box-shadow: 0 0 14px rgba(229, 32, 32, 0.25); }
+.lv-card.lv-high.on { border-top-color: #df6500; box-shadow: 0 0 14px rgba(223, 101, 0, 0.25); }
+.lv-card.lv-med.on { border-top-color: #ef9100; box-shadow: 0 0 14px rgba(239, 145, 0, 0.25); }
+.lv-card.lv-low.on { border-top-color: #3f8500; box-shadow: 0 0 14px rgba(63, 133, 0, 0.25); }
+.lv-card .lv-num { font-family: var(--mono); font-size: 26px; font-weight: 800; line-height: 1; color: var(--gray-500); }
+.lv-card.on .lv-num { color: var(--white); }
+.lv-card.lv-crit.on .lv-num { color: #ff6b6b; text-shadow: 0 0 12px rgba(229, 32, 32, 0.6); }
+.lv-card.lv-high.on .lv-num { color: #ff9d4d; text-shadow: 0 0 12px rgba(223, 101, 0, 0.6); }
+.lv-card.lv-med.on .lv-num { color: #f5b83d; text-shadow: 0 0 12px rgba(239, 145, 0, 0.6); }
+.lv-card.lv-low.on .lv-num { color: #76b900; text-shadow: 0 0 12px rgba(63, 133, 0, 0.6); }
+.lv-card .lv-name { font-size: 10px; color: var(--gray-400); letter-spacing: 1px; margin-top: 4px; font-weight: 700; }
+.lv-card .lv-pct { font-family: var(--mono); font-size: 10px; color: var(--gray-500); margin-top: 2px; }
 /* ═══ 检测历史 ═══ */
 .scan-list { display: flex; flex-direction: column; gap: 4px; }
 .scan-item {
@@ -302,11 +315,13 @@ body {
 .sw-total { background: var(--gray-400); }
 .bar-track { flex: 1; height: 16px; background: #0a0a0a; border: 1px solid var(--gray-border); overflow: hidden; }
 .bar-fill { height: 100%; transition: width 0.5s ease; }
-.bar-crit { background: linear-gradient(90deg, #7a0e0e, #e52020); box-shadow: 0 0 6px rgba(229, 32, 32, 0.3); }
-.bar-high { background: linear-gradient(90deg, #8a3a00, #df6500); }
-.bar-med { background: linear-gradient(90deg, #8a5a00, #ef9100); }
-.bar-low { background: linear-gradient(90deg, #1e4a00, #3f8500); }
-.bar-total { background: #2a2a2a; }
+.bar-fill.sw-process { background: linear-gradient(90deg, #1e4a4a, #4fd1d9); }
+.bar-fill.sw-network { background: linear-gradient(90deg, #3a2a5a, #b48cff); }
+.bar-fill.sw-ip { background: linear-gradient(90deg, #7a0e0e, #e52020); box-shadow: 0 0 6px rgba(229, 32, 32, 0.3); }
+.bar-fill.sw-domain { background: linear-gradient(90deg, #8a3a00, #df6500); }
+.bar-fill.sw-port { background: linear-gradient(90deg, #8a5a00, #ef9100); }
+.bar-fill.sw-resource { background: linear-gradient(90deg, #1e4a00, #3f8500); }
+.bar-fill.sw-asset { background: linear-gradient(90deg, #2a4a00, #76b900); }
 .dist-group {
   font-size: 9px; color: var(--gray-500); letter-spacing: 2px;
   text-transform: uppercase; font-weight: 700; margin: 4px 0 2px;

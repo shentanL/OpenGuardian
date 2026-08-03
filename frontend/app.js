@@ -245,6 +245,24 @@
   tabChat.addEventListener("click", () => { switchTab(false); stopDashRefresh(); });
   tabDash.addEventListener("click", () => switchTab(true));
 
+  // 等级卡元数据（Splunk/Defender 风格）
+  const LEVEL_CARDS = [
+    ["critical", "严重", "lv-crit"],
+    ["high", "高危", "lv-high"],
+    ["medium", "中危", "lv-med"],
+    ["low", "低危", "lv-low"],
+  ];
+  // 类别细分 7 类
+  const TYPES = [
+    ["process", "进程异常", "sw-process"],
+    ["network", "可疑网络", "sw-network"],
+    ["malicious_ip", "恶意 IP", "sw-ip"],
+    ["malicious_domain", "恶意域名", "sw-domain"],
+    ["port", "危险端口", "sw-port"],
+    ["resource", "资源占用", "sw-resource"],
+    ["asset", "资产安全", "sw-asset"],
+  ];
+
   function renderRiskBars(dist) {
     const el = document.getElementById("risk-bars");
     if (!dist || !dist.levels) {
@@ -253,38 +271,40 @@
     }
     const levels = dist.levels;
     const types = dist.types || {};
-    const total = Math.max(dist.total || 1, 1);
-    const pct = (v) => Math.round((v / total) * 100);
-    const LEVELS = [
-      ["critical", "严重", "bar-crit"],
-      ["high", "高危", "bar-high"],
-      ["medium", "中危", "bar-med"],
-      ["low", "低危", "bar-low"],
-    ];
-    // 类别细分 7 类（Splunk/Defender 安全仪表盘风格）
-    const TYPES = [
-      ["process", "进程异常", "sw-process"],
-      ["network", "可疑网络", "sw-network"],
-      ["malicious_ip", "恶意 IP", "sw-ip"],
-      ["malicious_domain", "恶意域名", "sw-domain"],
-      ["port", "危险端口", "sw-port"],
-      ["resource", "资源占用", "sw-resource"],
-      ["asset", "资产安全", "sw-asset"],
-    ];
-    const bar = (key, label, cls, val) => `
-      <div class="bar-row"><span class="lbl">${label}</span>
-        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct(val)}%"></div></div>
-        <span class="val">${val}</span>
-        <span class="pct">${pct(val)}%</span></div>`;
-    // 明细化：仅渲染有数据的项（排掉 0 值空行），类别全 0 时整组隐藏
-    const lvRows = LEVELS.filter(([k]) => (levels[k] || 0) > 0)
-      .map(([k, l, c]) => bar(k, l, c, levels[k])).join("");
+    const total = dist.total || 0;
+    const pct = (v) => (total === 0 ? 0 : Math.round((v / total) * 100));
+    // 按需显示：0 风险仅简洁空状态
+    if (total === 0) {
+      el.innerHTML = `<div class="lv-cards">
+        ${LEVEL_CARDS.map(([k, l, c]) => `<div class="lv-card ${c}"><div class="lv-num">0</div><div class="lv-name">${l}</div></div>`).join("")}
+      </div>
+      <div class="dist-empty">最近检测 0 风险，系统状态干净</div>`;
+      return;
+    }
+    // 等级卡（Splunk/Defender 风格：大数字 + 占比）
+    const lvCards = LEVEL_CARDS.map(([k, l, c]) => {
+      const v = levels[k] || 0;
+      return `<div class="lv-card ${c} ${v > 0 ? "on" : ""}">
+        <div class="lv-num">${v}</div>
+        <div class="lv-name">${l}</div>
+        <div class="lv-pct">${pct(v)}%</div></div>`;
+    }).join("");
+    // 类别分布（7 类条形，仅显示有数据的）
     const typeRows = TYPES.filter(([k]) => (types[k] || 0) > 0)
-      .map(([k, l, c]) => bar(k, l, c, types[k])).join("");
-    // 最近风险明细（来自最近检测的真实风险项）
-    const last = dist.last_risks || [];
+      .map(([k, l, sw]) => {
+        const v = types[k];
+        return `<div class="bar-row"><span class="lbl"><i class="sw ${sw}"></i>${l}</span>
+          <div class="bar-track"><div class="bar-fill ${sw}" style="width:${pct(v)}%"></div></div>
+          <span class="val">${v}</span>
+          <span class="pct">${pct(v)}%</span></div>`;
+      }).join("");
+    // Top 风险项（最危险的 6 条）
     const LV_CLS = { critical: "lv-crit", high: "lv-high", medium: "lv-med", low: "lv-low" };
-    const detailRows = last.slice(0, 8).map((r) => {
+    const LV_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+    const top = (dist.last_risks || []).slice()
+      .sort((a, b) => (LV_ORDER[String(a.level).toLowerCase()] ?? 3) - (LV_ORDER[String(b.level).toLowerCase()] ?? 3))
+      .slice(0, 6);
+    const topRows = top.map((r) => {
       const lv = String(r.level || "low").toLowerCase();
       const name = r.name || r.process || r.item || "未知";
       const desc = r.detail || r.description || r.reason || r.message || "";
@@ -292,16 +312,12 @@
         <span class="risk-name">${escapeHtml(name)}</span>
         <span class="risk-desc">${escapeHtml(desc)}</span></div>`;
     }).join("");
-    // 按需显示：0 风险时不渲染空条形（累计/级别/类别），仅简洁空状态
-    if ((dist.total || 0) === 0) {
-      el.innerHTML = `<div class="dist-empty">最近检测 0 风险，系统状态干净</div>`;
-      return;
-    }
     el.innerHTML = `
-      ${lvRows ? `<div class="dist-group">按级别</div>${lvRows}` : ""}
-      ${typeRows ? `<div class="dist-group">按类别</div>${typeRows}` : ""}
-      ${bar("total", "累计", "bar-total", dist.total || 0)}
-      ${detailRows ? `<div class="dist-group">最近风险明细</div>${detailRows}` : ""}`;
+      <div class="dist-group">等级分布</div>
+      <div class="lv-cards">${lvCards}</div>
+      ${typeRows ? `<div class="dist-group">类别分布</div>${typeRows}` : ""}
+      <div class="dist-group">Top 风险项</div>
+      ${topRows || `<div class="dist-empty">暂无风险明细</div>`}`;
   }
 
   function renderResChart(samples) {
@@ -476,41 +492,6 @@
     time.textContent = `最近检测 ${t}`;
   }
 
-  function renderDonut(dist) {
-    const svg = document.getElementById("risk-donut");
-    const totalEl = document.getElementById("donut-total");
-    if (!svg) return;
-    const total = dist.total || 0;
-    totalEl.textContent = total;
-    const lv = dist.levels || {};
-    const SEGS = [
-      ["critical", "#e52020"],
-      ["high", "#df6500"],
-      ["medium", "#ef9100"],
-      ["low", "#3f8500"],
-    ];
-    const R = 44, CX = 60, CY = 60, W = 12;
-    if (total === 0) {
-      svg.innerHTML = `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#1f1f1f" stroke-width="${W}"/>`;
-      return;
-    }
-    let acc = 0;
-    let paths = "";
-    for (const [k, color] of SEGS) {
-      const v = lv[k] || 0;
-      if (v <= 0) continue;
-      const frac = v / total;
-      const a0 = (acc * 2 * Math.PI) - Math.PI / 2;
-      const a1 = ((acc + frac) * 2 * Math.PI) - Math.PI / 2;
-      const x0 = CX + R * Math.cos(a0), y0 = CY + R * Math.sin(a0);
-      const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1);
-      const large = frac > 0.5 ? 1 : 0;
-      paths += `<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${W}"/>`;
-      acc += frac;
-    }
-    svg.innerHTML = paths;
-  }
-
   function renderScanList(scans) {
     const el = document.getElementById("scan-list");
     if (!scans || !scans.length) {
@@ -535,7 +516,6 @@
       const data = await resp.json();
       const dist = data.risk_distribution || {};
       renderStatusBanner(data);
-      renderDonut(dist);
       renderRiskBars(Object.assign({}, dist, { last_risks: data.last_risks || [] }));
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);

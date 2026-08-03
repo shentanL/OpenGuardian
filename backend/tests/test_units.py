@@ -267,7 +267,6 @@ class TestUIFrontend(unittest.TestCase):
     def test_security_score(self):
         """安全系数：评分算法（扣分/等级/加固建议）。"""
         from app.security import assess_security
-
         # 0 风险 → 100 优
         r0 = assess_security([])
         self.assertEqual(r0["score"], 100)
@@ -288,6 +287,29 @@ class TestUIFrontend(unittest.TestCase):
         self.assertEqual(r2["score"], 100 - 15 - 10 - 15)
         self.assertEqual(r2["grade"], "medium")
         self.assertTrue(any("任务管理器" in s["text"] for s in r2["suggestions"]))
+
+    def test_vuln_scan(self):
+        """漏扫：系统补丁/配置类漏洞检测接入 + 类别统计 + 建议。"""
+        detector = (Path(__file__).resolve().parent.parent / "app" / "agents" / "detector.py").read_text(encoding="utf-8")
+        self.assertIn("_scan_vulnerabilities", detector)
+        self.assertIn("scan_vulnerabilities", detector)
+        vuln = (Path(__file__).resolve().parent.parent / "app" / "agents" / "vuln.py").read_text(encoding="utf-8")
+        self.assertIn("_scan_smb1", vuln)       # 永恒之蓝
+        self.assertIn("_scan_firewall", vuln)   # 防火墙
+        self.assertIn("_scan_guest", vuln)      # Guest 账户
+        self.assertIn("_scan_uac", vuln)        # UAC
+        self.assertIn("_scan_patches", vuln)    # 系统补丁
+        main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
+        self.assertIn('"vuln": 0', main)        # 类别统计
+        # 安全评分：漏洞风险走 vuln 建议分支
+        from app.security import assess_security
+        r = assess_security([{"item_type": "vuln_smb1", "name": "SMBv1 协议已启用",
+                              "level": "critical", "detail": "永恒之蓝利用通道",
+                              "suggestion": "关闭 SMB1 功能"}])
+        self.assertEqual(r["score"], 100 - 20)  # critical 漏洞：扣 20
+        self.assertTrue(any("修复后重新检测" in s["text"] for s in r["suggestions"]))
+        js = (Path(__file__).resolve().parent.parent.parent / "frontend" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('"vuln"', js)
 
 
 class TestIntentRules(unittest.TestCase):

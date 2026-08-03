@@ -270,10 +270,11 @@
     ["medium", "中危", "lv-med"],
     ["low", "低危", "lv-low"],
   ];
-  // 类别细分 7 类
+  // 类别细分 8 类（进程/网络/漏洞配置/资源/资产 + 威胁情报细分）
   const TYPES = [
     ["process", "进程异常", "sw-process"],
     ["network", "可疑网络", "sw-network"],
+    ["vuln", "漏洞配置", "sw-vuln"],
     ["malicious_ip", "恶意 IP", "sw-ip"],
     ["malicious_domain", "恶意域名", "sw-domain"],
     ["port", "危险端口", "sw-port"],
@@ -545,6 +546,9 @@
     if (sugEl) {
       const ICONS = { process: "ic-term", port: "ic-net", asset: "ic-lock", network: "ic-net",
                       malicious_ip: "ic-alert", malicious_domain: "ic-alert", resource: "ic-gauge",
+                      vuln: "ic-alert", vuln_smb1: "ic-alert", vuln_patch: "ic-bolt",
+                      vuln_firewall: "ic-shield", vuln_guest: "ic-lock", vuln_uac: "ic-shield",
+                      vuln_share: "ic-net",
                       update: "ic-bolt", firewall: "ic-shield", password: "ic-lock",
                       phishing: "ic-alert", backup: "ic-check" };
       sugEl.innerHTML = (sec.suggestions || []).map((s) =>

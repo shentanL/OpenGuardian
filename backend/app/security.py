@@ -68,6 +68,9 @@ def assess_security(risks: list[dict] | None) -> dict:
                 f"检测到外部连接「{name}」：确认是否为你主动使用的软件（如游戏、更新），"
                 f"不是的话建议留意并结束该程序"
             )
+        elif itype.startswith("vuln_"):
+            # 漏洞类：detail 已含人话解释，建议优先用检测器给出的修复方法
+            sug = f"「{name}」：{r.get('suggestion') or detail}。修复后重新检测，安全系数会回升"
         else:
             sug = f"发现「{name}」风险：{detail}。建议按检测报告中的处置建议操作"
 

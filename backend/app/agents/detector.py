@@ -195,7 +195,7 @@ class DetectorAgent(BaseAgent):
     description = "终端安全检测：异常进程、可疑网络连接、资源健康"
 
     def handle(self, task: AgentTask) -> AgentResult:
-        scope = task.params.get("scope", "all")  # all / process / network / resource
+        scope = task.params.get("scope", "all")  # all / process / network / resource / vuln
         risks: list[RiskItem] = []
         if scope in ("all", "process"):
             risks.extend(self._scan_processes())
@@ -203,6 +203,8 @@ class DetectorAgent(BaseAgent):
             risks.extend(self._scan_network())
         if scope in ("all", "resource"):
             risks.extend(self._scan_resources())
+        if scope in ("all", "vuln"):
+            risks.extend(self._scan_vulnerabilities())
 
         summary = (
             f"检测完成：发现 {len(risks)} 项风险"
@@ -275,6 +277,21 @@ class DetectorAgent(BaseAgent):
         except Exception as exc:  # noqa: BLE001
             logger.warning("process scan error: %s", exc)
         return risks
+
+    def _scan_vulnerabilities(self) -> list[RiskItem]:
+        """漏洞扫描：系统补丁/配置类漏洞（SMBv1、防火墙、Guest、UAC、共享）。"""
+        from .vuln import scan_vulnerabilities
+
+        items: list[RiskItem] = []
+        for v in scan_vulnerabilities():
+            items.append(RiskItem(
+                item_type=v.item_type,
+                name=v.name,
+                detail=v.detail,
+                level=v.level,
+                suggestion=v.suggestion,
+            ))
+        return items
 
     # ---- 网络扫描 ----
     def _scan_network(self) -> list[RiskItem]:

@@ -368,6 +368,7 @@ body {
 .bar-fill { height: 100%; transition: width 0.5s ease; }
 .bar-fill.sw-process { background: linear-gradient(90deg, #1e4a4a, #4fd1d9); }
 .bar-fill.sw-network { background: linear-gradient(90deg, #3a2a5a, #b48cff); }
+.bar-fill.sw-vuln { background: linear-gradient(90deg, #4a3a00, #d9a400); box-shadow: 0 0 6px rgba(217, 164, 0, 0.3); }
 .bar-fill.sw-ip { background: linear-gradient(90deg, #7a0e0e, #e52020); box-shadow: 0 0 6px rgba(229, 32, 32, 0.3); }
 .bar-fill.sw-domain { background: linear-gradient(90deg, #8a3a00, #df6500); }
 .bar-fill.sw-port { background: linear-gradient(90deg, #8a5a00, #ef9100); }

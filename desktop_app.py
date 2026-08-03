@@ -16,6 +16,7 @@ import uvicorn
 import webview
 from PIL import Image
 import pystray
+import os as _os
 
 PROJECT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = PROJECT_DIR / "backend"
@@ -75,16 +76,20 @@ def _show_window(icon=None, item=None):
 
 
 def _exit_app(icon=None, item=None):
-    """完全退出应用。"""
+    """完全退出应用——强制终止所有线程（解决 sys.exit() 杀不掉后台线程的问题）。"""
     global _window, _tray_icon
     if _tray_icon:
-        _tray_icon.stop()
+        try:
+            _tray_icon.stop()
+        except Exception:
+            pass
     if _window:
         try:
             _window.destroy()
         except Exception:
             pass
-    sys.exit(0)
+    # os._exit() 立即终止进程，不等待守护线程
+    _os._exit(0)
 
 
 def _on_closing():

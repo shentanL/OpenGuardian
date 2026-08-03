@@ -87,10 +87,10 @@ def _read_status() -> dict:
 
 
 def update_knowledge() -> dict:
-    """主动汲取：拉取并合并 URLhaus 恶意域名 + FireHOL 恶意 IP。"""
+    """主动汲取：URLhaus 恶意域名 + FireHOL 恶意 IP + MalwareBazaar 病毒哈希。"""
     status = _read_status()
     now = time.strftime("%Y-%m-%d %H:%M:%S")
-    result = {"domains": 0, "ips": 0, "ok": False, "detail": ""}
+    result = {"domains": 0, "ips": 0, "hashes": 0, "ok": False, "detail": ""}
     try:
         with httpx.Client(timeout=TIMEOUT, verify=False) as client:
             # 1) URLhaus 恶意域名
@@ -131,6 +131,19 @@ def update_knowledge() -> dict:
     except Exception as exc:  # noqa: BLE001
         logger.warning("威胁情报汲取整体失败: %s", exc)
         result["detail"] = str(exc)[:120]
+
+    # 3) 病毒库：MalwareBazaar 恶意软件哈希（独立容错）
+    try:
+        from .virus_hashes import fetch_virus_hashes, invalidate_cache
+
+        hr = fetch_virus_hashes()
+        result["hashes"] = hr.get("total", 0)
+        status["sources"]["malwarebazaar"] = {"total": hr.get("total", 0), "updated": now, "ok": hr.get("ok", False)}
+        if hr.get("ok"):
+            invalidate_cache()  # 哈希库更新后清缓存
+        _save_status(status)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("病毒库汲取失败: %s", exc)
     return result
 
 
@@ -151,9 +164,12 @@ def start_background_update(delay: float = 5.0) -> None:
 def kb_stats() -> dict:
     """知识库状态（供 /api/stats 展示）。"""
     status = _read_status()
+    from .virus_hashes import hash_stats
+
     return {
         "domains": len(_read_existing(DOMAINS_FILE)),
         "ips": len(_read_existing(IPS_FILE)),
+        "hashes": hash_stats()["total"],
         "last_update": status.get("last_update"),
         "sources": status.get("sources", {}),
     }

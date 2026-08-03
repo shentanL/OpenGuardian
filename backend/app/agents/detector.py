@@ -15,6 +15,7 @@ import psutil
 from ..config import settings
 from ..schemas import AgentResult, AgentTask, RiskItem, RiskLevel
 from .base import BaseAgent
+from .patterns_ext import MALWARE_PATTERNS_EXT  # 大厂级扩充特征库（500+ 条）
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,10 @@ logger = logging.getLogger(__name__)
 # 格式: (匹配关键字, 名称, 描述, 风险级别)
 # 关键字小写，匹配"进程名+路径"组合；同族软件聚合为一条
 MALWARE_PATTERNS: list[tuple[str, str, str, RiskLevel]] = [
+    # ---- 基础特征库（见文件开头 ~110 条）----
+    # ---- 扩充特征库（大厂级，见 patterns_ext.py 500+ 条）----
+    *MALWARE_PATTERNS_EXT,
+    # ---- 以下为基础库本体 ----
     # ---- 挖矿类（CPU 侵占）----
     ("xmrig", "挖矿木马", "门罗币挖矿器，常被静默植入他人电脑挖矿", RiskLevel.CRITICAL),
     ("minergate", "挖矿程序", "自带图形界面的挖矿工具，也常被捆绑安装", RiskLevel.HIGH),
@@ -250,6 +255,25 @@ class DetectorAgent(BaseAgent):
                             pid=pid,
                         ))
                         continue
+
+                    # 1.5) 病毒库哈希命中（MalwareBazaar 真实恶意样本）
+                    try:
+                        from ..kb.virus_hashes import cached_hashes, file_sha256
+
+                        if exe and cached_hashes():
+                            fhash = file_sha256(exe)
+                            if fhash and fhash in cached_hashes():
+                                risks.append(RiskItem(
+                                    item_type="malware_hash",
+                                    name=name,
+                                    detail=f"程序文件 SHA256 命中恶意软件病毒库（MalwareBazaar 真实样本）",
+                                    level=RiskLevel.CRITICAL,
+                                    suggestion="该程序的哈希与已知恶意软件完全一致，立即结束进程并全盘查杀。",
+                                    pid=pid,
+                                ))
+                                continue
+                    except Exception:  # noqa: BLE001
+                        pass
 
                     # 2) 资源占用异常（CPU 按核数归一化：单进程占 85% 总算力才报警）
                     #    psutil per-process cpu_percent 上限 = 100×核数

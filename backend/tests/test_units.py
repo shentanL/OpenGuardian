@@ -311,6 +311,26 @@ class TestUIFrontend(unittest.TestCase):
         js = (Path(__file__).resolve().parent.parent.parent / "frontend" / "app.js").read_text(encoding="utf-8")
         self.assertIn('"vuln"', js)
 
+    def test_virus_database(self):
+        """大厂级病毒库：特征 500+ 条 + MalwareBazaar 哈希库 + 进程哈希比对。"""
+        from app.agents.detector import MALWARE_PATTERNS
+        self.assertGreaterEqual(len(MALWARE_PATTERNS), 500, f"特征库 {len(MALWARE_PATTERNS)} 条")
+        # 关键家族覆盖
+        joined = " ".join(p[0] for p in MALWARE_PATTERNS)
+        for fam in ("lockbit", "conti", "wannacry", "njrat", "mimikatz", "emotet", "mirai"):
+            self.assertIn(fam, joined, f"缺少家族特征: {fam}")
+        from app.agents import patterns_ext
+        self.assertGreaterEqual(len(patterns_ext.MALWARE_PATTERNS_EXT), 390)
+        # 哈希库模块
+        vh = (Path(__file__).resolve().parent.parent / "app" / "kb" / "virus_hashes.py").read_text(encoding="utf-8")
+        self.assertIn("codeload.github.com/eset/malware-ioc", vh)
+        self.assertIn("file_sha256", vh)
+        self.assertIn("cached_hashes", vh)
+        updater = (Path(__file__).resolve().parent.parent / "app" / "kb" / "updater.py").read_text(encoding="utf-8")
+        self.assertIn("malwarebazaar", updater)
+        main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
+        self.assertIn('"malware_hash": 0', main)
+
 
 class TestIntentRules(unittest.TestCase):
     """意图识别规则：疑问句优先 + 各意图确定性分类（曾误判 consult→detect/educate）。"""

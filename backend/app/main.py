@@ -250,7 +250,8 @@ def stats() -> dict:
     # 风险分布：基于最近一次检测的 risks（等级 × 7 类细分）
     levels = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     types = {"process": 0, "network": 0, "resource": 0, "asset": 0,
-             "malicious_ip": 0, "malicious_domain": 0, "port": 0, "vuln": 0}
+             "malicious_ip": 0, "malicious_domain": 0, "port": 0, "vuln": 0,
+             "malware_hash": 0}
     if latest:
         for r in latest.get("risks", []):
             lv = str(r.get("level", "low")).lower()

@@ -570,8 +570,8 @@
     const okAll = urlhaus.ok !== false && firehol.ok !== false;
     const mark = okAll ? `<span class="kb-ok">同步正常</span>` : `<span class="kb-warn">部分同步失败（沿用本地数据）</span>`;
     el.innerHTML =
-      `威胁情报自动更新 · 恶意域名 <b>${kb.domains}</b> · 恶意 IP/CIDR <b>${kb.ips}</b>` +
-      ` · 上次更新 <b>${kb.last_update}</b> · ${mark}`;
+      `威胁情报自动更新 · 病毒库 <b>${kb.hashes || 0}</b> 样本 · 恶意域名 <b>${kb.domains}</b>` +
+      ` · 恶意 IP/CIDR <b>${kb.ips}</b> · 上次更新 <b>${kb.last_update}</b> · ${mark}`;
   }
 
   function renderScanList(scans) {

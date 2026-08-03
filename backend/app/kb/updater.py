@@ -23,6 +23,10 @@ import httpx
 logger = logging.getLogger(__name__)
 
 KB_DIR = Path(__file__).resolve().parent.parent.parent / "kb_data"
+# PyInstaller 打包修正
+import sys as _sys
+if getattr(_sys, "frozen", False) and hasattr(_sys, "_MEIPASS"):
+    KB_DIR = Path(_sys._MEIPASS) / "backend" / "kb_data"
 DOMAINS_FILE = KB_DIR / "malicious_domains.txt"
 IPS_FILE = KB_DIR / "malicious_ips.txt"
 STATUS_FILE = KB_DIR / ".update_status.json"

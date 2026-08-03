@@ -26,6 +26,10 @@ _FALLBACK_WEAK = {
 
 # 弱密码数据文件（按优先级合并加载）
 _KB_DIR = Path(__file__).resolve().parent.parent.parent / "kb_data"
+# PyInstaller 打包修正
+import sys as _sys
+if getattr(_sys, "frozen", False) and hasattr(_sys, "_MEIPASS"):
+    _KB_DIR = Path(_sys._MEIPASS) / "backend" / "kb_data"
 _PW_FILES = [
     _KB_DIR / "pwdb1m.txt",      # Pwdb 百万弱密码榜（主库）
     _KB_DIR / "passwords.txt",   # 中文弱密码 Top 1000 等（补充）

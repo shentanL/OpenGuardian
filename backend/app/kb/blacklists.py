@@ -19,6 +19,10 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _KB_DIR = Path(__file__).resolve().parent.parent.parent / "kb_data"
+# PyInstaller 打包修正
+import sys as _sys
+if getattr(_sys, "frozen", False) and hasattr(_sys, "_MEIPASS"):
+    _KB_DIR = Path(_sys._MEIPASS) / "backend" / "kb_data"
 
 _cache: dict[str, object] = {}
 

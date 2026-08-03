@@ -14,6 +14,11 @@ from .llm.providers import DEFAULT_PROVIDER, PROVIDERS
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config.json"
+# PyInstaller 打包修正：config.json 允许写入 AppData
+import sys as _sys
+if getattr(_sys, "frozen", False):
+    CONFIG_PATH = Path.home() / "AppData" / "Local" / "OpenGuardian" / "config.json"
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _read() -> dict:

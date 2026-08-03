@@ -319,6 +319,9 @@ def stats() -> dict:
 
 # ---- 前端静态托管 ----
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+# PyInstaller 打包环境修正：sys._MEIPASS 是解压根目录
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    FRONTEND_DIR = Path(sys._MEIPASS) / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 

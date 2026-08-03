@@ -21,6 +21,10 @@ import httpx
 logger = logging.getLogger(__name__)
 
 KB_DIR = Path(__file__).resolve().parent.parent.parent / "kb_data"
+# PyInstaller 打包修正
+import sys as _sys
+if getattr(_sys, "frozen", False) and hasattr(_sys, "_MEIPASS"):
+    KB_DIR = Path(_sys._MEIPASS) / "backend" / "kb_data"
 HASHES_FILE = KB_DIR / "virus_hashes.txt"
 
 ESET_ZIP_URL = "https://codeload.github.com/eset/malware-ioc/zip/refs/heads/master"

@@ -58,6 +58,15 @@
     return div.innerHTML;
   }
 
+  function relativeTime(iso) {
+    if (!iso) return "";
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60) return "刚刚";
+    if (diff < 3600) return Math.floor(diff / 60) + "分钟前";
+    if (diff < 86400) return Math.floor(diff / 3600) + "小时前";
+    return Math.floor(diff / 86400) + "天前";
+  }
+
   function addTyping() {
     const div = document.createElement("div");
     div.className = "msg bot typing";
@@ -669,8 +678,10 @@
       sessionListEl.innerHTML = sessions.length
         ? sessions.map((s) => {
             const title = sessionTitle(s.id) || s.id.slice(0, 10);
+            const timeStr = relativeTime(s.updated_at || "");
             return `<div class="session-item ${s.id === currentSessionId ? "active" : ""}" data-id="${s.id}">
               ${ic("ic-chat")}<span class="s-title">${escapeHtml(title)}</span>
+              <span class="s-time">${timeStr}</span>
               <button class="s-del" data-del="${s.id}" title="删除会话">${ic("ic-trash")}</button>
             </div>`;
           }).join("")

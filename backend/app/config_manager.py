@@ -41,9 +41,28 @@ def get_provider() -> str:
 
 
 def get_api_key() -> str:
-    """获取 API Key（优先 config.json，其次环境变量）。"""
+    """获取 API Key（config.json → .env 环境变量 双重回退）。"""
     cfg = _read()
-    return cfg.get("api_key") or ""
+    key = cfg.get("api_key") or ""
+    if key:
+        return key
+    # 回退：从 .env 读取（适配已配置 .env 未写 config 的场景）
+    import os as _os
+    from pathlib import Path as _Path
+    try:
+        from dotenv import load_dotenv
+        env_path = _Path(__file__).resolve().parent.parent / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+            key = _os.getenv("DEEPSEEK_API_KEY") or ""
+            if key:
+                # 自动同步到 config.json
+                cfg["api_key"] = key
+                from pathlib import Path as _P
+                _P(str(CONFIG_PATH)).write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return key
 
 
 def get_base_url() -> str:

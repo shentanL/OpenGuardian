@@ -228,6 +228,28 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn("interval=1", main)
         self.assertIn("get_resource_history(limit=120)", main)
 
+    def test_kb_active_update(self):
+        """知识库主动汲取：启动后台更新 + stats 暴露状态。"""
+        main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
+        self.assertIn("start_background_update", main)
+        self.assertIn("kb_status", main)
+        updater = (Path(__file__).resolve().parent.parent / "app" / "kb" / "updater.py").read_text(encoding="utf-8")
+        self.assertIn("URLHAUS_URL", updater)
+        self.assertIn("FIREHOL_URL", updater)
+        self.assertIn("update_knowledge", updater)
+        js = (Path(__file__).resolve().parent.parent.parent / "frontend" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("renderKbStatus", js)
+
+    def test_clickable_affordance(self):
+        """可点击元素区分：查看/收起提示 + 展开详情交互。"""
+        js = (Path(__file__).resolve().parent.parent.parent / "frontend" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("expand-hint", js)
+        self.assertIn("scan-detail", js)
+        self.assertIn("risk-sug", js)
+        css = (Path(__file__).resolve().parent.parent.parent / "frontend" / "style.css").read_text(encoding="utf-8")
+        self.assertIn(".clickable", css)
+        self.assertIn("cursor: pointer", css)
+
 
 class TestIntentRules(unittest.TestCase):
     """意图识别规则：疑问句优先 + 各意图确定性分类（曾误判 consult→detect/educate）。"""

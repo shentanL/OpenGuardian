@@ -231,6 +231,21 @@ body {
 .status-banner.danger .sb-icon { color: var(--red); }
 .status-banner.danger .sb-title { color: #ff6b6b; text-shadow: 0 0 10px rgba(229, 32, 32, 0.5); }
 .status-banner.neutral .sb-title { color: var(--gray-300); }
+/* ═══ 威胁情报自动更新状态条 ═══ */
+.kb-strip {
+  display: flex; align-items: center; gap: 8px;
+  max-width: 1100px; margin: 0 auto 14px;
+  padding: 6px 14px; font-size: 11px;
+  font-family: var(--mono); color: var(--gray-400);
+  background: #0a0a0a; border: 1px solid var(--gray-border);
+  border-radius: 2px;
+}
+.kb-strip .kb-ic { color: var(--green); }
+.kb-strip .kb-ic .ic { width: 13px; height: 13px; }
+.kb-strip b { color: var(--gray-200); }
+.kb-ok { color: var(--green); }
+.kb-warn { color: #f5b83d; }
+.kb-dim { color: var(--gray-500); }
 /* ═══ KPI 卡片（Netdata 风格图标卡）═══ */
 .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; max-width: 1100px; margin: 0 auto 14px; }
 .kpi {
@@ -343,6 +358,47 @@ body {
 .risk-name { font-family: var(--mono); color: var(--gray-100); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
 .risk-desc { color: var(--gray-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .dist-empty { font-size: 10px; color: var(--gray-500); margin-top: 4px; letter-spacing: 0.5px; }
+/* ═══ 可点击元素（GitHub affordance 区分）═══ */
+.clickable { cursor: pointer; }
+.expand-hint {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
+  color: var(--gray-500); font-size: 10px; font-family: var(--mono);
+  opacity: 0.7; transition: opacity 0.2s, color 0.2s;
+}
+.expand-hint .ic { width: 11px; height: 11px; }
+.clickable:hover .expand-hint { opacity: 1; color: var(--green); }
+.risk-item.clickable {
+  padding: 4px 6px; margin: 0 -6px; border-radius: 2px;
+  border-left: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.risk-item.clickable:hover { background: #101010; border-left-color: var(--green); }
+.risk-sug {
+  display: none; margin: 4px 0 2px 54px;
+  font-size: 11px; color: var(--green);
+  border-left: 2px solid rgba(118, 185, 0, 0.4);
+  padding-left: 8px; line-height: 1.5;
+}
+/* 检测历史展开详情 */
+.scan-item.clickable { transition: background 0.15s, border-color 0.15s; }
+.scan-item.clickable:hover { background: #101010; border-left-color: var(--green); }
+.scan-item.clickable[data-expand="1"] { border-left-color: var(--green); background: #0f0f0f; }
+.scan-detail { flex-basis: 100%; width: 100%; }
+.scan-risk {
+  border: 1px solid var(--gray-border); border-left: 3px solid var(--gray-500);
+  border-radius: 2px; padding: 8px 10px; margin: 6px 0;
+  background: #0a0a0a; font-size: 11px;
+}
+.scan-risk.lv-critical { border-left-color: #e52020; }
+.scan-risk.lv-high { border-left-color: #df6500; }
+.scan-risk.lv-medium { border-left-color: #ef9100; }
+.scan-risk.lv-low { border-left-color: #3f8500; }
+.scan-risk.lv-none, .scan-risk.none { color: var(--gray-500); }
+.sr-top { display: flex; justify-content: space-between; align-items: center; }
+.sr-top b { font-family: var(--mono); color: var(--gray-100); font-size: 12px; }
+.sr-lv { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--gray-400); }
+.sr-detail { color: var(--gray-300); margin-top: 3px; }
+.sr-sug { color: var(--green); margin-top: 4px; }
 .bar-row .val { width: 60px; text-align: right; font-family: var(--mono);
                 color: var(--white); font-weight: 700; font-size: 13px; }
 .bar-row .pct { width: 44px; text-align: right; font-family: var(--mono);

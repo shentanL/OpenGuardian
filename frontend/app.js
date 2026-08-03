@@ -308,9 +308,14 @@
       const lv = String(r.level || "low").toLowerCase();
       const name = r.name || r.process || r.item || "未知";
       const desc = r.detail || r.description || r.reason || r.message || "";
-      return `<div class="risk-item"><span class="lv-badge ${LV_CLS[lv] || "lv-low"}">${lv}</span>
+      const sug = r.suggestion || "";
+      return `<div class="risk-item clickable" data-expand="0">
+        <span class="lv-badge ${LV_CLS[lv] || "lv-low"}">${lv}</span>
         <span class="risk-name">${escapeHtml(name)}</span>
-        <span class="risk-desc">${escapeHtml(desc)}</span></div>`;
+        <span class="risk-desc">${escapeHtml(desc)}</span>
+        <span class="expand-hint">${ic("ic-gauge")}<i>查看</i></span>
+        <div class="risk-sug">${sug ? `建议：${escapeHtml(sug)}` : ""}</div>
+      </div>`;
     }).join("");
     el.innerHTML = `
       <div class="dist-group">等级分布</div>
@@ -318,6 +323,18 @@
       ${typeRows ? `<div class="dist-group">类别分布</div>${typeRows}` : ""}
       <div class="dist-group">Top 风险项</div>
       ${topRows || `<div class="dist-empty">暂无风险明细</div>`}`;
+    // Top 风险项点击展开建议
+    el.querySelectorAll(".risk-item.clickable").forEach((item) => {
+      item.addEventListener("click", () => {
+        const sug = item.querySelector(".risk-sug");
+        const hint = item.querySelector(".expand-hint");
+        if (!sug || !sug.textContent.trim()) return;
+        const open = item.dataset.expand === "1";
+        item.dataset.expand = open ? "0" : "1";
+        sug.style.display = open ? "none" : "block";
+        if (hint) hint.innerHTML = `${ic("ic-gauge")}<i>${open ? "查看" : "收起"}</i>`;
+      });
+    });
   }
 
   function renderResChart(samples) {
@@ -489,22 +506,73 @@
     time.textContent = `最近检测 ${t}`;
   }
 
+  function renderKbStatus(kb) {
+    const el = document.getElementById("kb-text");
+    if (!el) return;
+    if (!kb || !kb.last_update) {
+      el.innerHTML = `<span class="kb-dim">威胁情报自动更新：等待首次同步…</span>`;
+      return;
+    }
+    const src = kb.sources || {};
+    const urlhaus = src.urlhaus || {};
+    const firehol = src.firehol || {};
+    const okAll = urlhaus.ok !== false && firehol.ok !== false;
+    const mark = okAll ? `<span class="kb-ok">同步正常</span>` : `<span class="kb-warn">部分同步失败（沿用本地数据）</span>`;
+    el.innerHTML =
+      `威胁情报自动更新 · 恶意域名 <b>${kb.domains}</b> · 恶意 IP/CIDR <b>${kb.ips}</b>` +
+      ` · 上次更新 <b>${kb.last_update}</b> · ${mark}`;
+  }
+
   function renderScanList(scans) {
     const el = document.getElementById("scan-list");
     if (!scans || !scans.length) {
       el.innerHTML = `<div class="scan-item">暂无检测记录 — 在助手页说「帮我检测一下电脑」</div>`;
       return;
     }
-    el.innerHTML = scans.map((s) => {
+    el.innerHTML = scans.map((s, i) => {
       const cls = s.high > 0 ? "crit" : s.total > 0 ? "warn" : "ok";
       const lbl = s.high > 0 ? `${s.high} 高危` : s.total > 0 ? `${s.total} 项` : "安全";
       const time = (s.time || "").replace("T", " ").slice(0, 19);
-      return `<div class="scan-item">
+      const hasDetail = (s.risks || []).length > 0;
+      return `<div class="scan-item clickable" data-i="${i}" data-expand="0">
         <span class="scan-time">${time}</span>
         <span class="scan-sum">${escapeHtml((s.summary || "").slice(0, 46))}</span>
         <span class="badge ${cls}">${lbl}</span>
+        ${hasDetail ? `<span class="expand-hint">${ic("ic-gauge")}<i>查看</i></span>` : ""}
+        <div class="scan-detail"></div>
       </div>`;
     }).join("");
+    // 点击展开：该次检测的风险明细（GitHub 列表项交互）
+    el.querySelectorAll(".scan-item.clickable").forEach((item) => {
+      item.addEventListener("click", () => {
+        const i = +item.dataset.i;
+        const s = scans[i];
+        const detail = item.querySelector(".scan-detail");
+        const hint = item.querySelector(".expand-hint");
+        if (item.dataset.expand === "1") {
+          item.dataset.expand = "0";
+          detail.innerHTML = "";
+          if (hint) hint.innerHTML = `${ic("ic-gauge")}<i>查看</i>`;
+          return;
+        }
+        item.dataset.expand = "1";
+        const risks = s.risks || [];
+        detail.innerHTML = risks.length
+          ? risks.map((r) => {
+              const lv = String(r.level || "low").toLowerCase();
+              const nm = r.name || r.process || r.item || "未知";
+              const ds = r.detail || r.description || "";
+              const sg = r.suggestion || "";
+              return `<div class="scan-risk lv-${lv}">
+                <div class="sr-top"><b>${escapeHtml(nm)}</b><span class="sr-lv">${lv}</span></div>
+                <div class="sr-detail">${escapeHtml(ds)}</div>
+                ${sg ? `<div class="sr-sug">建议：${escapeHtml(sg)}</div>` : ""}
+              </div>`;
+            }).join("")
+          : `<div class="scan-risk none">本次检测 0 风险</div>`;
+        if (hint) hint.innerHTML = `${ic("ic-gauge")}<i>收起</i>`;
+      });
+    });
   }
 
   async function loadDashboard() {
@@ -513,6 +581,7 @@
       const data = await resp.json();
       const dist = data.risk_distribution || {};
       renderStatusBanner(data);
+      renderKbStatus(data.kb_status);
       renderRiskBars(Object.assign({}, dist, { last_risks: data.last_risks || [] }));
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);

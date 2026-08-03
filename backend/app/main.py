@@ -15,6 +15,7 @@ from pathlib import Path
 from .agents import build_bus, build_consultant
 from .config import settings
 from .db import get_db
+from .kb.updater import kb_stats, start_background_update
 from .sampler import ResourceSampler
 from .schemas import (
     AgentTask,
@@ -38,6 +39,7 @@ async def lifespan(_app: FastAPI):
     global _sampler
     _sampler = ResourceSampler(get_db(), interval=1)  # 最短间隔：1s 连续采样
     _sampler.start()
+    start_background_update(delay=5.0)  # 知识库主动汲取（URLhaus/FireHOL）
     try:
         yield
     finally:
@@ -269,6 +271,7 @@ def stats() -> dict:
         "resources": db.get_resource_history(limit=120),
         "scans": scans_all[:10],
         "audit_count": len(db.get_audit(limit=1000)),
+        "kb_status": kb_stats(),  # 知识库主动汲取状态
     }
 
 

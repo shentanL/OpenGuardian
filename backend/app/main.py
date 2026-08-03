@@ -1,9 +1,9 @@
 """OpenGuardian FastAPI 主入口。"""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import os
 import sys
 import uuid
 from contextlib import asynccontextmanager
@@ -214,17 +214,33 @@ async def chat_stream(req: ChatRequest):
             ):
                 chunks.append(token)
                 yield f'data: {json.dumps({"type": "token", "text": token}, ensure_ascii=False)}\n\n'
-            reply = "".join(chunks) or "（服务暂时无法连接 AI，请稍后再试）"
+            reply = "".join(chunks) or "（AI 暂时无法响应，请稍后再试）"
             yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
+
+        elif intent == Intent.EDUCATE:
+            # 教育：走 Agent 案例库（秒回） + 流式模拟
+            task = AgentTask(intent=intent, params={}, user_input=req.message)
+            result = await run_in_threadpool(consultant.handle, task)
+            reply = result.message or "该话题暂无案例，尝试换个问法"
+            # 逐字流式输出（模拟打字效果）
+            for i in range(0, len(reply), 3):
+                chunk = reply[i:i+3]
+                yield f'data: {json.dumps({"type": "token", "text": chunk}, ensure_ascii=False)}\n\n'
+                await asyncio.sleep(0.02)
+            yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
+
         else:
-            # 其他意图：完整处理后一次性返回
+            # 检测/执行等其他意图：流式模拟处理过程
+            yield f'data: {json.dumps({"type": "token", "text": "正在分析..."}, ensure_ascii=False)}\n\n'
             task = AgentTask(intent=intent, params={}, user_input=req.message)
             result = await run_in_threadpool(consultant.handle, task)
             data = result.data or {}
+            reply = result.message
+            yield f'data: {json.dumps({"type": "token", "text": reply or "分析完成"}, ensure_ascii=False)}\n\n'
             payload = {
                 "type": "result",
-                "reply": result.message,
-                "intent": data.get("intent", "consult"),
+                "reply": reply,
+                "intent": data.get("intent", intent.value),
                 "risks": [r.model_dump() for r in result.risks],
                 "needs_confirmation": bool(data.get("needs_confirmation", False)),
                 "execute_hint": data.get("execute_hint"),

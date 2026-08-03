@@ -14,7 +14,7 @@ PROVIDERS: dict[str, dict] = {
         "base_url": "https://api.deepseek.com/anthropic",
         "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
         "default_model": "deepseek-v4-pro",
-        "format": "anthropic",
+        "format": "openai",  # DeepSeek 端点实际接受 OpenAI 格式请求
         "description": "DeepSeek 官方 API。deepseek-v4-pro=旗舰版, flash=轻量版",
     },
     "kimi": {

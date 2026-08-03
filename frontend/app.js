@@ -424,6 +424,72 @@
     });
   }
 
+  function renderStatusBanner(data) {
+    const banner = document.getElementById("status-banner");
+    const title = document.getElementById("sb-title");
+    const sub = document.getElementById("sb-sub");
+    const time = document.getElementById("sb-time");
+    const scans = data.scans || [];
+    const latest = scans[0];
+    const dist = data.risk_distribution || {};
+    const total = dist.total || 0;
+    if (!latest) {
+      banner.className = "status-banner neutral";
+      title.textContent = "尚未运行检测";
+      sub.textContent = "在安全助手页输入「帮我检测一下电脑」开始首次扫描";
+      time.textContent = "";
+      return;
+    }
+    const t = (latest.time || "").replace("T", " ").slice(0, 19);
+    if (total > 0) {
+      const lv = dist.levels || {};
+      const crit = (lv.critical || 0) + (lv.high || 0);
+      banner.className = "status-banner danger";
+      title.textContent = `检测到 ${total} 项风险${crit ? `（含 ${crit} 项高危）` : ""}`;
+      sub.textContent = (latest.summary || "").slice(0, 60);
+    } else {
+      banner.className = "status-banner safe";
+      title.textContent = "系统状态：安全";
+      sub.textContent = "最近检测未发现风险，请保持良好安全习惯";
+    }
+    time.textContent = `最近检测 ${t}`;
+  }
+
+  function renderDonut(dist) {
+    const svg = document.getElementById("risk-donut");
+    const totalEl = document.getElementById("donut-total");
+    if (!svg) return;
+    const total = dist.total || 0;
+    totalEl.textContent = total;
+    const lv = dist.levels || {};
+    const SEGS = [
+      ["critical", "#e52020"],
+      ["high", "#df6500"],
+      ["medium", "#ef9100"],
+      ["low", "#3f8500"],
+    ];
+    const R = 44, CX = 60, CY = 60, W = 12;
+    if (total === 0) {
+      svg.innerHTML = `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#1f1f1f" stroke-width="${W}"/>`;
+      return;
+    }
+    let acc = 0;
+    let paths = "";
+    for (const [k, color] of SEGS) {
+      const v = lv[k] || 0;
+      if (v <= 0) continue;
+      const frac = v / total;
+      const a0 = (acc * 2 * Math.PI) - Math.PI / 2;
+      const a1 = ((acc + frac) * 2 * Math.PI) - Math.PI / 2;
+      const x0 = CX + R * Math.cos(a0), y0 = CY + R * Math.sin(a0);
+      const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1);
+      const large = frac > 0.5 ? 1 : 0;
+      paths += `<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${color}" stroke-width="${W}"/>`;
+      acc += frac;
+    }
+    svg.innerHTML = paths;
+  }
+
   function renderScanList(scans) {
     const el = document.getElementById("scan-list");
     if (!scans || !scans.length) {
@@ -433,8 +499,12 @@
     el.innerHTML = scans.map((s) => {
       const cls = s.high > 0 ? "crit" : s.total > 0 ? "warn" : "ok";
       const lbl = s.high > 0 ? `${s.high} 高危` : s.total > 0 ? `${s.total} 项` : "安全";
-      const time = (s.time || "").replace("T", " ").slice(5, 16);
-      return `<div class="scan-item"><span>${time}</span><span>${escapeHtml((s.summary || "").slice(0, 40))}</span><span class="badge ${cls}">${lbl}</span></div>`;
+      const time = (s.time || "").replace("T", " ").slice(0, 19);
+      return `<div class="scan-item">
+        <span class="scan-time">${time}</span>
+        <span class="scan-sum">${escapeHtml((s.summary || "").slice(0, 46))}</span>
+        <span class="badge ${cls}">${lbl}</span>
+      </div>`;
     }).join("");
   }
 
@@ -442,17 +512,26 @@
     try {
       const resp = await fetch("/api/stats");
       const data = await resp.json();
-      renderRiskBars(Object.assign({}, data.risk_distribution || {}, { last_risks: data.last_risks || [] }));
+      const dist = data.risk_distribution || {};
+      renderStatusBanner(data);
+      renderDonut(dist);
+      renderRiskBars(Object.assign({}, dist, { last_risks: data.last_risks || [] }));
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);
       // KPI 卡片
-      const dist = data.risk_distribution || {};
       const setKpi = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
       const lv = dist.levels || {};
-      setKpi("kpi-high", (lv.critical || 0) + (lv.high || 0));
+      const high = (lv.critical || 0) + (lv.high || 0);
+      setKpi("kpi-high", high);
       setKpi("kpi-total", dist.total || 0);
       setKpi("kpi-audit", data.audit_count || 0);
       setKpi("kpi-scans", (data.scans || []).length);
+      // 实时内存（来自最近资源采样）
+      const res = data.resources || [];
+      if (res.length) setKpi("kpi-mem", `${res[res.length - 1].mem.toFixed(0)}%`);
+      // 高危状态灯
+      const dot = document.getElementById("kpi-high-dot");
+      if (dot) { dot.className = "kpi-dot " + (high > 0 ? "on" : "off"); }
     } catch (err) {
       document.getElementById("risk-bars").innerHTML = `<div style="color:#f87171">加载失败：${escapeHtml(err.message)}</div>`;
     }

@@ -63,20 +63,6 @@ body {
 .r-suggest .ic { color: var(--green); }
 .btn-term .ic { width: 12px; height: 12px; vertical-align: -2px; margin-right: 3px; }
 
-/* ═══ KPI 卡片 ═══ */
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
-           max-width: 1100px; margin: 0 auto 14px; }
-.kpi {
-  background: var(--bg-panel); border: 1px solid var(--gray-border);
-  border-left: 2px solid var(--green); border-radius: 2px; padding: 12px 16px;
-}
-.kpi-label { font-size: 10px; color: var(--gray-400); letter-spacing: 1.5px;
-             text-transform: uppercase; font-weight: 700; }
-.kpi-value { font-family: var(--mono); font-size: 26px; font-weight: 700;
-             color: var(--white); margin-top: 4px; }
-.kpi-value::after { content: ""; display: block; width: 24px; height: 2px;
-                    background: var(--green); margin-top: 5px; opacity: 0.6; }
-
 /* ═══ 侧边栏 ═══ */
 .sidebar {
   width: 220px; flex-shrink: 0;
@@ -224,19 +210,89 @@ body {
 /* ═══ 仪表盘 ═══ */
 .dashboard { flex: 1; overflow-y: auto; padding: 24px; }
 .hidden { display: none; }
+/* ═══ 安全状态横幅（Grafana 风格）═══ */
+.status-banner {
+  display: flex; align-items: center; gap: 14px;
+  max-width: 1100px; margin: 0 auto 14px;
+  border: 1px solid var(--gray-border); border-radius: 2px;
+  padding: 14px 18px; background: var(--bg-panel);
+  border-left: 4px solid var(--gray-500);
+}
+.status-banner .sb-icon { color: var(--gray-400); }
+.status-banner .sb-icon .ic { width: 26px; height: 26px; }
+.status-banner .sb-body { flex: 1; }
+.status-banner .sb-title { font-size: 15px; font-weight: 800; letter-spacing: 1px; }
+.status-banner .sb-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.status-banner .sb-time { font-family: var(--mono); font-size: 10px; color: var(--gray-500); }
+.status-banner.safe { border-left-color: var(--green); }
+.status-banner.safe .sb-icon { color: var(--green); }
+.status-banner.safe .sb-title { color: var(--green); text-shadow: 0 0 10px rgba(118, 185, 0, 0.5); }
+.status-banner.danger { border-left-color: var(--red); }
+.status-banner.danger .sb-icon { color: var(--red); }
+.status-banner.danger .sb-title { color: #ff6b6b; text-shadow: 0 0 10px rgba(229, 32, 32, 0.5); }
+.status-banner.neutral .sb-title { color: var(--gray-300); }
+/* ═══ KPI 卡片（Netdata 风格图标卡）═══ */
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; max-width: 1100px; margin: 0 auto 14px; }
+.kpi {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-panel); border: 1px solid var(--gray-border);
+  border-top: 2px solid var(--green); border-radius: 2px;
+  padding: 12px 14px; transition: border-color 0.2s, transform 0.2s;
+}
+.kpi:hover { border-color: var(--green); transform: translateY(-1px); }
+.kpi-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 2px; flex-shrink: 0; }
+.kpi-icon .ic { width: 18px; height: 18px; }
+.ik-red { background: rgba(229, 32, 32, 0.12); color: #ff6b6b; }
+.ik-orange { background: rgba(223, 101, 0, 0.12); color: #ff9d4d; }
+.ik-green { background: rgba(118, 185, 0, 0.12); color: var(--green); }
+.ik-cyan { background: rgba(63, 190, 200, 0.12); color: #4fd1d9; }
+.ik-mem { background: rgba(180, 140, 255, 0.12); color: #b48cff; }
+.kpi-mid { flex: 1; }
+.kpi-label { font-size: 10px; color: var(--gray-400); letter-spacing: 1.5px; font-weight: 700; }
+.kpi-value { font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--white); line-height: 1.1; }
+.kpi-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.kpi-dot.off { background: var(--green); box-shadow: 0 0 6px rgba(118, 185, 0, 0.8); }
+.kpi-dot.on { background: var(--red); box-shadow: 0 0 8px rgba(229, 32, 32, 0.9); animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: 0.4; } }
 .dash-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--gray-border);
   border-top: 2px solid var(--green);
   border-radius: 2px; padding: 16px 18px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
+.panel:hover { border-color: rgba(118, 185, 0, 0.5); box-shadow: 0 0 14px rgba(118, 185, 0, 0.06); }
 .panel h3 {
   font-size: 11px; color: var(--green); margin-bottom: 14px;
   letter-spacing: 2px; text-transform: uppercase; font-weight: 700;
 }
 .panel h3::before { content: "▮ "; }
 .panel.span2 { grid-column: span 2; }
+/* ═══ 风险环形图（Grafana donut）═══ */
+.risk-top { position: relative; display: flex; justify-content: center; margin-bottom: 10px; }
+.risk-donut { width: 130px; height: 130px; }
+.donut-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none;
+}
+.donut-center #donut-total { font-family: var(--mono); font-size: 26px; font-weight: 800; color: var(--white); line-height: 1; }
+.donut-center .donut-cap { font-size: 9px; color: var(--gray-400); letter-spacing: 1.5px; margin-top: 2px; }
+/* ═══ 检测历史 ═══ */
+.scan-list { display: flex; flex-direction: column; gap: 4px; }
+.scan-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 10px; font-size: 12px;
+  border-left: 2px solid var(--gray-border);
+  transition: background 0.15s;
+}
+.scan-item:hover { background: #101010; border-left-color: var(--green); }
+.scan-time { font-family: var(--mono); font-size: 11px; color: var(--gray-400); flex-shrink: 0; width: 150px; }
+.scan-sum { flex: 1; color: var(--gray-200); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 2px; border: 1px solid; flex-shrink: 0; }
+.badge.ok { color: var(--green); border-color: var(--green-dark); }
+.badge.warn { color: #f5b83d; border-color: #8a5a00; }
+.badge.crit { color: #ff6b6b; border-color: #7a0e0e; }
 .risk-bars { display: flex; flex-direction: column; gap: 12px; }
 .bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .bar-row .lbl { width: 72px; color: var(--gray-300); font-weight: 700; letter-spacing: 0.5px; }
@@ -294,18 +350,6 @@ body {
 .chart-tip .tm { color: #bff230; }
 .chart-tip .td { color: #a7a7a7; }
 .panel { position: relative; }
-.scan-list { display: flex; flex-direction: column; gap: 5px; max-height: 220px; overflow-y: auto; }
-.scan-item {
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  font-size: 12px; background: #0d0d0d; padding: 8px 12px;
-  border-radius: 2px; color: var(--gray-300); border: 1px solid var(--gray-border);
-}
-.scan-item .t { font-family: var(--mono); color: var(--gray-400); font-size: 11px; }
-.scan-item .badge { padding: 1px 8px; font-size: 10px; font-weight: 700;
-                    letter-spacing: 0.5px; border-radius: 2px; border: 1px solid; }
-.badge.ok { color: var(--green-dark); border-color: var(--green-dark); }
-.badge.warn { color: var(--yellow); border-color: var(--yellow); }
-.badge.crit { color: var(--red); border-color: var(--red); }
 
 /* ═══ 输入栏 ═══ */
 .inputbar {

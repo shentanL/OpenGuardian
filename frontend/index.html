@@ -31,15 +31,44 @@
   <main id="chat" class="chat"></main>
 
   <main id="dashboard" class="dashboard hidden">
+    <div id="status-banner" class="status-banner">
+      <span class="sb-icon"><svg class="ic"><use href="#ic-shield"/></svg></span>
+      <div class="sb-body">
+        <div class="sb-title" id="sb-title">系统状态检测中…</div>
+        <div class="sb-sub" id="sb-sub">运行检测后显示整体安全状态</div>
+      </div>
+      <div class="sb-time" id="sb-time"></div>
+    </div>
     <div class="kpi-row">
-      <div class="kpi"><div class="kpi-label">高危风险</div><div class="kpi-value" id="kpi-high">0</div></div>
-      <div class="kpi"><div class="kpi-label">检测项</div><div class="kpi-value" id="kpi-total">0</div></div>
-      <div class="kpi"><div class="kpi-label">处置审计</div><div class="kpi-value" id="kpi-audit">0</div></div>
-      <div class="kpi"><div class="kpi-label">检测次数</div><div class="kpi-value" id="kpi-scans">0</div></div>
+      <div class="kpi" id="kpi-card-high">
+        <div class="kpi-icon ik-red"><svg class="ic"><use href="#ic-alert"/></svg></div>
+        <div class="kpi-mid"><div class="kpi-label">高危风险</div><div class="kpi-value" id="kpi-high">0</div></div>
+        <span class="kpi-dot" id="kpi-high-dot"></span>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon ik-orange"><svg class="ic"><use href="#ic-radar"/></svg></div>
+        <div class="kpi-mid"><div class="kpi-label">检测项</div><div class="kpi-value" id="kpi-total">0</div></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon ik-green"><svg class="ic"><use href="#ic-bolt"/></svg></div>
+        <div class="kpi-mid"><div class="kpi-label">处置审计</div><div class="kpi-value" id="kpi-audit">0</div></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon ik-cyan"><svg class="ic"><use href="#ic-scan"/></svg></div>
+        <div class="kpi-mid"><div class="kpi-label">检测次数</div><div class="kpi-value" id="kpi-scans">0</div></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon ik-mem"><svg class="ic"><use href="#ic-cpu"/></svg></div>
+        <div class="kpi-mid"><div class="kpi-label">实时内存</div><div class="kpi-value" id="kpi-mem">--%</div></div>
+      </div>
     </div>
     <div class="dash-grid">
       <div class="panel">
         <h3>风险分布明细</h3>
+        <div class="risk-top">
+          <svg id="risk-donut" viewBox="0 0 120 120" class="risk-donut"></svg>
+          <div class="donut-center"><div id="donut-total">0</div><div class="donut-cap">累计风险</div></div>
+        </div>
         <div id="risk-bars" class="risk-bars"></div>
       </div>
       <div class="panel wide">

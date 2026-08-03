@@ -47,3 +47,6 @@ Filename: "{app}\{#MyAppExeName}"; Description: "启动 OpenGuardian"; Flags: no
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\OpenGuardian"
+Type: files; Name: "{app}\config.json"
+Type: files; Name: "{app}\.env"
+Type: filesandordirs; Name: "{app}\kb_data"

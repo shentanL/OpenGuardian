@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a8e600"/>
+      <stop offset="50%" stop-color="#76b900"/>
+      <stop offset="100%" stop-color="#4a7a00"/>
+    </linearGradient>
+    <linearGradient id="innerGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#151515"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- outer shield -->
+  <path d="M128 12
+           L228 42
+           Q236 44 238 52
+           L242 120
+           Q244 168 220 188
+           L128 244
+           L36 188
+           Q12 168 14 120
+           L18 52
+           Q20 44 28 42
+           Z"
+        fill="url(#shieldGrad)" stroke="#3d5a00" stroke-width="2"/>
+
+  <!-- inner panel -->
+  <path d="M128 48
+           L198 70
+           Q204 72 205 78
+           L208 128
+           Q210 162 194 176
+           L128 216
+           L62 176
+           Q46 162 48 128
+           L51 78
+           Q52 72 58 70
+           Z"
+        fill="url(#innerGrad)"/>
+
+  <!-- checkmark -->
+  <path d="M88 130 L118 160 L172 96"
+        fill="none" stroke="#76b900" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"
+        filter="url(#glow)"/>
+
+  <!-- corner accents -->
+  <circle cx="40" cy="40" r="4" fill="#76b900" opacity="0.6"/>
+  <circle cx="216" cy="40" r="4" fill="#76b900" opacity="0.6"/>
+</svg>

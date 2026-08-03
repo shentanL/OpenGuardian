@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .agents import build_bus, build_consultant
 from .config import settings
+from .db import get_db
 from .schemas import (
     AgentTask,
     ChatRequest,
@@ -37,13 +38,13 @@ app.add_middleware(
 # ---- 组装 Agent 系统 ----
 bus = build_bus()
 consultant = build_consultant(bus)
+db = get_db()
 
-# ---- 会话内存（MVP；后续可落 SQLite）----
-sessions: dict[str, list[dict]] = {}
+# ---- 会话（SQLite 持久化）----
 
 
 def _get_history(session_id: str, limit: int = 8) -> list[dict]:
-    history = sessions.setdefault(session_id, [])
+    history = db.load_session(session_id)
     return history[-limit:]
 
 
@@ -86,9 +87,18 @@ def chat(req: ChatRequest) -> ChatResponse:
     result = consultant.handle(task)
 
     history.append({"role": "assistant", "content": result.message})
-    sessions[session_id] = history[-40:]
+    db.save_session(session_id, history)
 
     data = result.data or {}
+    # 检测类请求写入扫描历史（供报告/运维统计）
+    if data.get("intent") == "detect":
+        risks = result.risks
+        db.add_scan(
+            total_risks=len(risks),
+            high_risks=sum(1 for r in risks if r.level in (RiskLevel.HIGH, RiskLevel.CRITICAL)),
+            summary=result.message[:200],
+        )
+
     return ChatResponse(
         reply=result.message,
         intent=Intent(data.get("intent", "consult")),
@@ -168,9 +178,17 @@ def execute(req: ExecuteRequest) -> dict:
 
 @app.get("/api/audit")
 def audit() -> dict:
-    from .agents.executor import AUDIT_LOG
+    return {"logs": db.get_audit()}
 
-    return {"logs": AUDIT_LOG}
+
+@app.get("/api/sessions")
+def sessions_list() -> dict:
+    return {"sessions": db.list_sessions()}
+
+
+@app.get("/api/scans")
+def scans() -> dict:
+    return {"history": db.get_scan_history()}
 
 
 # ---- 前端静态托管 ----

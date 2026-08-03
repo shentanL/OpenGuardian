@@ -17,7 +17,7 @@ from app.agents.detector import (  # noqa: E402
     DetectorAgent,
 )
 from app.agents.educator import CASES, EducatorAgent  # noqa: E402
-from app.agents.executor import AUDIT_LOG, ExecutorAgent  # noqa: E402
+from app.agents.executor import ExecutorAgent  # noqa: E402
 from app.kb.glossary import GLOSSARY, explain_terms, lookup  # noqa: E402
 from app.schemas import AgentTask, Intent  # noqa: E402
 
@@ -68,11 +68,13 @@ class TestAnalyst(unittest.TestCase):
 
 class TestExecutor(unittest.TestCase):
     def test_system_process_protected(self):
-        before = len(AUDIT_LOG)
+        from app.db import get_db
+
+        before = len(get_db().get_audit())
         result = ExecutorAgent().handle(_task(Intent.EXECUTE, pid=4, action="terminate"))
         self.assertFalse(result.success)
         self.assertIn("保护名单", result.message)
-        self.assertEqual(len(AUDIT_LOG), before)  # 白名单拒绝不记审计
+        self.assertEqual(len(get_db().get_audit()), before)  # 白名单拒绝不记审计
 
     def test_missing_pid_friendly_error(self):
         result = ExecutorAgent().handle(_task(Intent.EXECUTE))

@@ -161,8 +161,21 @@ SYSTEM_PROCESSES = {
     "dwm.exe", "fontdrvhost.exe", "Registry", "Memory Compression",
 }
 
-# 用户白名单（可扩展）
+# 用户白名单（SQLite 持久化；此处为内存兜底）
 USER_WHITELIST: set[str] = set()
+
+
+def _get_user_whitelist() -> set[str]:
+    """读取用户白名单（DB 优先，失败回退内存集）。"""
+    try:
+        from ..db import get_db
+
+        stored = get_db().get_whitelist()
+        if stored:
+            return stored
+    except Exception:  # noqa: BLE001
+        pass
+    return USER_WHITELIST
 
 
 def _match_pattern(name: str, path: str) -> tuple[str, str, RiskLevel] | None:
@@ -216,7 +229,7 @@ class DetectorAgent(BaseAgent):
                     cpu = proc.info["cpu_percent"] or 0.0
                     mem = proc.info["memory_percent"] or 0.0
 
-                    if name in SYSTEM_PROCESSES or name in USER_WHITELIST:
+                    if name in SYSTEM_PROCESSES or name in _get_user_whitelist():
                         continue
 
                     # 1) 特征库命中

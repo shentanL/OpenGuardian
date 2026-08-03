@@ -3,22 +3,20 @@
 安全设计（申报书关键问题之一）：
 1. 白名单校验：系统关键进程 / 用户白名单永不处置
 2. 必须显式传参（由前端二次确认后调用），不接收自然语言直接执行
-3. 所有处置写入审计日志
+3. 所有处置写入 SQLite 审计日志（DB 不可用时降级内存）
 """
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
 import psutil
 
-from ..schemas import AgentResult, AgentTask, RiskLevel, RiskItem
+from ..db import get_db
+from ..schemas import AgentResult, AgentTask
 from .base import BaseAgent
-from .detector import SYSTEM_PROCESSES, USER_WHITELIST
+from .detector import SYSTEM_PROCESSES
 
 logger = logging.getLogger(__name__)
-
-AUDIT_LOG: list[dict] = []  # MVP 用内存审计日志，后续可落 SQLite
 
 
 class ExecutorAgent(BaseAgent):
@@ -52,8 +50,9 @@ class ExecutorAgent(BaseAgent):
                 message=f"没有权限操作进程 {pid}，请以管理员身份运行",
             )
 
-        # ---- 白名单保护 ----
-        if name in SYSTEM_PROCESSES or name in USER_WHITELIST:
+        # ---- 白名单保护（系统进程 + SQLite 用户白名单）----
+        user_whitelist = get_db().get_whitelist()
+        if name in SYSTEM_PROCESSES or name in user_whitelist:
             return AgentResult(
                 agent=self.name,
                 success=False,
@@ -101,12 +100,5 @@ class ExecutorAgent(BaseAgent):
 
     @staticmethod
     def _audit(action: str, pid: int, name: str, result: str) -> None:
-        entry = {
-            "time": datetime.now().isoformat(timespec="seconds"),
-            "action": action,
-            "pid": pid,
-            "name": name,
-            "result": result,
-        }
-        AUDIT_LOG.append(entry)
-        logger.info("AUDIT %s", entry)
+        get_db().add_audit(action, pid, name, result)
+        logger.info("AUDIT %s pid=%s name=%s result=%s", action, pid, name, result)

@@ -257,7 +257,7 @@ def stats() -> dict:
             "types": types,
             "total": sum(levels.values()),
         },
-        "resources": db.get_resource_history(limit=30),
+        "resources": db.get_resource_history(limit=60),
         "scans": scans_all[:10],
         "audit_count": len(db.get_audit(limit=1000)),
     }

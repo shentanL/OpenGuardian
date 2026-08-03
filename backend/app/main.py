@@ -36,7 +36,7 @@ _sampler: ResourceSampler | None = None
 async def lifespan(_app: FastAPI):
     """服务生命周期：启动资源采样器，关闭时停止。"""
     global _sampler
-    _sampler = ResourceSampler(get_db(), interval=5)
+    _sampler = ResourceSampler(get_db(), interval=1)  # 最短间隔：1s 连续采样
     _sampler.start()
     try:
         yield
@@ -251,13 +251,24 @@ def stats() -> dict:
             if ty in types:
                 types[ty] += 1
 
+    # 最近风险明细：合并最近 10 次检测的风险项（最多 8 条）
+    last_risks: list[dict] = []
+    for s in scans_all[:10]:
+        for r in s.get("risks", []):
+            last_risks.append(r)
+            if len(last_risks) >= 8:
+                break
+        if len(last_risks) >= 8:
+            break
+
     return {
         "risk_distribution": {
             "levels": levels,
             "types": types,
             "total": sum(levels.values()),
         },
-        "resources": db.get_resource_history(limit=60),
+        "last_risks": last_risks,
+        "resources": db.get_resource_history(limit=120),
         "scans": scans_all[:10],
         "audit_count": len(db.get_audit(limit=1000)),
     }

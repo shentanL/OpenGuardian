@@ -234,7 +234,7 @@
     if (showDash) {
       loadDashboard();
       if (!window._dashTimer) {
-        window._dashTimer = setInterval(loadDashboard, 10000); // 每 10s 自动刷新
+        window._dashTimer = setInterval(loadDashboard, 3000); // 每 3s 自动刷新（1s 采样实时趋势）
       }
     }
   }
@@ -271,19 +271,36 @@
       <div class="bar-row"><span class="lbl">${label}</span>
         <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct(val)}%"></div></div>
         <span class="val">${val}</span></div>`;
+    // 明细化：仅渲染有数据的项（排掉 0 值空行），类别全 0 时整组隐藏
+    const lvRows = LEVELS.filter(([k]) => (levels[k] || 0) > 0)
+      .map(([k, l, c]) => bar(k, l, c, levels[k])).join("");
+    const typeRows = TYPES.filter(([k]) => (types[k] || 0) > 0)
+      .map(([k, l, c]) => bar(k, l, c, types[k])).join("");
+    // 最近风险明细（来自最近检测的真实风险项）
+    const last = dist.last_risks || [];
+    const LV_CLS = { critical: "lv-crit", high: "lv-high", medium: "lv-med", low: "lv-low" };
+    const detailRows = last.slice(0, 8).map((r) => {
+      const lv = String(r.level || "low").toLowerCase();
+      const name = r.name || r.process || r.item || "未知";
+      const desc = r.detail || r.description || r.reason || r.message || "";
+      return `<div class="risk-item"><span class="lv-badge ${LV_CLS[lv] || "lv-low"}">${lv}</span>
+        <span class="risk-name">${escapeHtml(name)}</span>
+        <span class="risk-desc">${escapeHtml(desc)}</span></div>`;
+    }).join("");
+    const emptyDetail = `<div class="dist-empty">最近 10 次检测 0 风险，系统状态干净</div>`;
     el.innerHTML = `
-      <div class="dist-group">按级别</div>
-      ${LEVELS.map(([k, l, c]) => bar(k, l, c, levels[k] || 0)).join("")}
-      <div class="dist-group">按类别</div>
-      ${TYPES.map(([k, l, c]) => bar(k, l, c, types[k] || 0)).join("")}
-      ${bar("total", "累计", "bar-total", dist.total || 0)}`;
+      ${lvRows ? `<div class="dist-group">按级别</div>${lvRows}` : ""}
+      ${typeRows ? `<div class="dist-group">按类别</div>${typeRows}` : ""}
+      ${bar("total", "累计", "bar-total", dist.total || 0)}
+      <div class="dist-group">最近风险明细</div>
+      ${detailRows || emptyDetail}`;
   }
 
   function renderResChart(samples) {
     const svg = document.getElementById("res-chart");
     const legendEl = document.querySelector(".legend");
     if (!samples || samples.length < 2) {
-      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#757575" font-size="12" font-family="monospace">采样中…（每 5s 自动记录）</text>`;
+      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#757575" font-size="12" font-family="monospace">采样中…（每 1s 自动记录）</text>`;
       if (legendEl) legendEl.innerHTML = `<span class="lg-cpu">CPU --%</span><span class="lg-mem">MEM --%</span><span class="lg-disk">DISK --%</span>`;
       return;
     }
@@ -425,7 +442,7 @@
     try {
       const resp = await fetch("/api/stats");
       const data = await resp.json();
-      renderRiskBars(data.risk_distribution || {});
+      renderRiskBars(Object.assign({}, data.risk_distribution || {}, { last_risks: data.last_risks || [] }));
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);
       // KPI 卡片

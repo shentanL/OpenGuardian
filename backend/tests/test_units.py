@@ -197,7 +197,7 @@ class TestDatabase(unittest.TestCase):
 
 
 class TestUIFrontend(unittest.TestCase):
-    """前端 UI-v5 变更验证（粒子背景 + 5s 采样 + canvas 层级）。"""
+    """前端 UI 变更验证（粒子背景 + 1s 采样 + canvas 层级 + 风险明细）。"""
 
     def test_background_js_particle_logic(self):
         bg = (Path(__file__).resolve().parent.parent.parent / "frontend" / "background.js").read_text(encoding="utf-8")
@@ -222,10 +222,11 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn(".bg-canvas", css)
         self.assertIn("pointer-events: none", css)
         self.assertEqual(css.count("{"), css.count("}"))
-
-    def test_sampler_interval_5s(self):
+    def test_sampler_interval_1s(self):
+        """资源采样间隔缩到最短：1s 连续采样。"""
         main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
-        self.assertIn("interval=5", main)
+        self.assertIn("interval=1", main)
+        self.assertIn("get_resource_history(limit=120)", main)
 
 
 class TestIntentRules(unittest.TestCase):

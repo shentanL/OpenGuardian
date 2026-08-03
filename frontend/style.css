@@ -240,8 +240,17 @@ body {
 .sw-total { background: var(--gray-400); }
 .bar-track { flex: 1; height: 16px; background: #0a0a0a; border: 1px solid var(--gray-border); overflow: hidden; }
 .bar-fill { height: 100%; transition: width 0.5s ease; }
-.bar-fill.high { background: linear-gradient(90deg, #7a1010, var(--red)); }
-.bar-fill.other { background: linear-gradient(90deg, #7a4d00, var(--yellow)); }
+.bar-crit { background: linear-gradient(90deg, #7a0e0e, #e52020); box-shadow: 0 0 6px rgba(229, 32, 32, 0.3); }
+.bar-high { background: linear-gradient(90deg, #8a3a00, #df6500); }
+.bar-med { background: linear-gradient(90deg, #8a5a00, #ef9100); }
+.bar-low { background: linear-gradient(90deg, #1e4a00, #3f8500); }
+.bar-total { background: #2a2a2a; }
+.dist-group {
+  font-size: 9px; color: var(--gray-500); letter-spacing: 2px;
+  text-transform: uppercase; font-weight: 700; margin: 4px 0 2px;
+  border-top: 1px dashed var(--gray-border); padding-top: 8px;
+}
+.dist-group:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 .bar-row .val { width: 60px; text-align: right; font-family: var(--mono);
                 color: var(--white); font-weight: 700; font-size: 13px; }
 .res-chart { width: 100%; height: 160px; }

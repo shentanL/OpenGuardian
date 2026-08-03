@@ -98,6 +98,7 @@ def chat(req: ChatRequest) -> ChatResponse:
             total_risks=len(risks),
             high_risks=sum(1 for r in risks if r.level in (RiskLevel.HIGH, RiskLevel.CRITICAL)),
             summary=result.message[:200],
+            risks=[r.model_dump() for r in risks],
         )
         try:
             import psutil
@@ -217,17 +218,26 @@ def scans() -> dict:
 
 @app.get("/api/stats")
 def stats() -> dict:
-    """仪表盘聚合数据：风险分布 + 资源趋势 + 检测历史。"""
+    """仪表盘聚合数据：二维风险分布 + 资源趋势 + 检测历史。"""
     scans_all = db.get_scan_history(limit=200)
-    # 风险分布（按级别统计，从 scan_history 无法细分，用最近一次检测的 summary 简化）
-    # —— 更准确的分布来自各次检测 risks；MVP 统计 high/total 比值
-    high_total = sum(s["high"] for s in scans_all)
-    total = sum(s["total"] for s in scans_all)
+
+    # 二维风险分布：按级别（critical/high/medium/low）× 按类别（process/network/resource/asset）
+    levels = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    types = {"process": 0, "network": 0, "resource": 0, "asset": 0}
+    for s in scans_all:
+        for r in s.get("risks", []):
+            lv = str(r.get("level", "low")).lower()
+            if lv in levels:
+                levels[lv] += 1
+            ty = str(r.get("item_type", "process")).lower()
+            if ty in types:
+                types[ty] += 1
+
     return {
         "risk_distribution": {
-            "high": high_total,
-            "other": max(total - high_total, 0),
-            "total": total,
+            "levels": levels,
+            "types": types,
+            "total": sum(levels.values()),
         },
         "resources": db.get_resource_history(limit=30),
         "scans": scans_all[:10],

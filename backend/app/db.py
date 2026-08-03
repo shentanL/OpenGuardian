@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS scan_history (
     time        TEXT NOT NULL,
     total_risks INTEGER NOT NULL DEFAULT 0,
     high_risks  INTEGER NOT NULL DEFAULT 0,
-    summary     TEXT
+    summary     TEXT,
+    risks_json  TEXT
 );
 CREATE TABLE IF NOT EXISTS resource_history (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +78,13 @@ class Database:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(self._path, check_same_thread=False)
             self._conn.executescript(_SCHEMA)
+            # 轻量迁移：老库补 risks_json 列（已存在则忽略）
+            try:
+                self._conn.execute("ALTER TABLE scan_history ADD COLUMN risks_json TEXT")
+                self._conn.commit()
+                logger.info("迁移: scan_history 增加 risks_json 列")
+            except sqlite3.OperationalError:
+                pass  # 列已存在
             self._conn.commit()
             logger.info("SQLite 就绪: %s", self._path)
         except Exception as exc:  # noqa: BLE001
@@ -181,21 +189,31 @@ class Database:
         return cur is not None and cur.rowcount > 0
 
     # ---- 检测历史 ----
-    def add_scan(self, total_risks: int, high_risks: int, summary: str = "") -> None:
+    def add_scan(self, total_risks: int, high_risks: int, summary: str = "", risks: list[dict] | None = None) -> None:
+        """写入扫描历史。risks 为 RiskItem 的 dict 列表（用于分布统计）。"""
+        payload = json.dumps(risks, ensure_ascii=False) if risks else None
         self._execute(
-            "INSERT INTO scan_history(time, total_risks, high_risks, summary) VALUES(?,?,?,?)",
-            (_now(), total_risks, high_risks, summary),
+            "INSERT INTO scan_history(time, total_risks, high_risks, summary, risks_json) "
+            "VALUES(?,?,?,?,?)",
+            (_now(), total_risks, high_risks, summary, payload),
         )
 
     def get_scan_history(self, limit: int = 50) -> list[dict]:
         rows = self._query(
-            "SELECT time, total_risks, high_risks, summary FROM scan_history "
+            "SELECT time, total_risks, high_risks, summary, risks_json FROM scan_history "
             "ORDER BY id DESC LIMIT ?",
             (limit,),
         )
-        return [
-            {"time": r[0], "total": r[1], "high": r[2], "summary": r[3]} for r in rows
-        ]
+        out = []
+        for r in rows:
+            risks = []
+            if r[4]:
+                try:
+                    risks = json.loads(r[4])
+                except json.JSONDecodeError:
+                    risks = []
+            out.append({"time": r[0], "total": r[1], "high": r[2], "summary": r[3], "risks": risks})
+        return out
 
     # ---- 资源历史 ----
     def add_resource_sample(self, cpu: float, mem: float, disk: float) -> None:

@@ -238,20 +238,36 @@
 
   function renderRiskBars(dist) {
     const el = document.getElementById("risk-bars");
-    const total = Math.max(dist.total || 0, 1);
-    const high = dist.high || 0;
-    const other = dist.other || 0;
+    if (!dist || !dist.levels) {
+      el.innerHTML = `<div style="color:#757575;font-size:11px">运行检测后显示分布</div>`;
+      return;
+    }
+    const levels = dist.levels;
+    const types = dist.types || {};
+    const total = Math.max(dist.total || 1, 1);
     const pct = (v) => Math.round((v / total) * 100);
+    const LEVELS = [
+      ["critical", "严重", "bar-crit"],
+      ["high", "高危", "bar-high"],
+      ["medium", "中危", "bar-med"],
+      ["low", "低危", "bar-low"],
+    ];
+    const TYPES = [
+      ["process", "进程", "sw-process"],
+      ["network", "网络", "sw-network"],
+      ["resource", "资源", "sw-resource"],
+      ["asset", "资产", "sw-asset"],
+    ];
+    const bar = (key, label, cls, val) => `
+      <div class="bar-row"><span class="lbl">${label}</span>
+        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct(val)}%"></div></div>
+        <span class="val">${val}</span></div>`;
     el.innerHTML = `
-      <div class="bar-row"><span class="lbl"><i class="sw sw-high"></i>高危</span>
-        <div class="bar-track"><div class="bar-fill high" style="width:${pct(high)}%"></div></div>
-        <span class="val">${high}</span></div>
-      <div class="bar-row"><span class="lbl"><i class="sw sw-other"></i>其他</span>
-        <div class="bar-track"><div class="bar-fill other" style="width:${pct(other)}%"></div></div>
-        <span class="val">${other}</span></div>
-      <div class="bar-row"><span class="lbl"><i class="sw sw-total"></i>累计</span>
-        <div class="bar-track"><div class="bar-fill" style="width:100%;background:#2a2a2a"></div></div>
-        <span class="val">${dist.total || 0}</span></div>`;
+      <div class="dist-group">按级别</div>
+      ${LEVELS.map(([k, l, c]) => bar(k, l, c, levels[k] || 0)).join("")}
+      <div class="dist-group">按类别</div>
+      ${TYPES.map(([k, l, c]) => bar(k, l, c, types[k] || 0)).join("")}
+      ${bar("total", "累计", "bar-total", dist.total || 0)}`;
   }
 
   function renderResChart(samples) {
@@ -301,7 +317,8 @@
       // KPI 卡片
       const dist = data.risk_distribution || {};
       const setKpi = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-      setKpi("kpi-high", dist.high || 0);
+      const lv = dist.levels || {};
+      setKpi("kpi-high", (lv.critical || 0) + (lv.high || 0));
       setKpi("kpi-total", dist.total || 0);
       setKpi("kpi-audit", data.audit_count || 0);
       setKpi("kpi-scans", (data.scans || []).length);

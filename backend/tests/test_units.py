@@ -250,6 +250,20 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn(".clickable", css)
         self.assertIn("cursor: pointer", css)
 
+    def test_github_polish(self):
+        """全站 GitHub 风格打磨：复制按钮/欢迎卡/版本号/滚动条。"""
+        js = (Path(__file__).resolve().parent.parent.parent / "frontend" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("msg-copy", js)          # 消息复制按钮
+        self.assertIn("wcard", js)             # 欢迎卡示例问题
+        self.assertIn("navigator.clipboard", js)
+        html = (Path(__file__).resolve().parent.parent.parent / "frontend" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("v0.5.8", html)          # 版本号
+        css = (Path(__file__).resolve().parent.parent.parent / "frontend" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("::-webkit-scrollbar", css)
+        self.assertIn(":focus-visible", css)   # 焦点态
+        cfg = (Path(__file__).resolve().parent.parent / "app" / "config.py").read_text(encoding="utf-8")
+        self.assertIn('APP_VERSION: str = "0.5.8"', cfg)
+
     def test_security_score(self):
         """安全系数：评分算法（扣分/等级/加固建议）。"""
         from app.security import assess_security

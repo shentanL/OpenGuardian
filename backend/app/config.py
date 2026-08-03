@@ -25,7 +25,7 @@ class Settings:
 
     # ---- 服务 ----
     APP_NAME: str = "OpenGuardian"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "0.5.8"
     HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))
 

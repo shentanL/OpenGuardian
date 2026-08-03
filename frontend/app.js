@@ -42,7 +42,11 @@
     const div = document.createElement("div");
     div.className = "msg " + role;
     const avatar = role === "user" ? ic("ic-shield") : ic("ic-radar");
-    div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${html}</div>`;
+    div.innerHTML = `<div class="avatar">${avatar}</div>
+      <div class="bubble">
+        <button class="msg-copy" title="复制">${ic("ic-copy")}</button>
+        <div class="bubble-inner">${html}</div>
+      </div>`;
     chatEl.appendChild(div);
     chatEl.scrollTop = chatEl.scrollHeight;
     return div;
@@ -82,6 +86,20 @@
 
   /* ---- 事件绑定 ---- */
   chatEl.addEventListener("click", function (e) {
+    // 复制按钮（GitHub 代码块风格）
+    const copyBtn = e.target.closest(".msg-copy");
+    if (copyBtn) {
+      const inner = copyBtn.closest(".bubble").querySelector(".bubble-inner");
+      const text = inner ? inner.textContent.trim() : "";
+      if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.innerHTML = `${ic("ic-check")}`;
+          copyBtn.classList.add("copied");
+          setTimeout(() => { copyBtn.innerHTML = `${ic("ic-copy")}`; copyBtn.classList.remove("copied"); }, 1500);
+        });
+      }
+      return;
+    }
     const btn = e.target.closest(".btn-term");
     if (!btn) return;
     const pid = parseInt(btn.dataset.pid, 10);
@@ -696,13 +714,35 @@
   }
 
   function addWelcome() {
-    addMsg("bot",
-      "你好！我是 OpenGuardian，你的 AI 个人数字安全助手。<br><br>" +
-      "你可以对我说：<br>" +
-      "· <b>「帮我检测一下电脑」</b> — 扫描进程/网络/资源风险<br>" +
-      "· <b>「什么是钓鱼邮件？」</b> — 安全知识咨询<br>" +
-      "· <b>「检查密码 123456」</b> — 密码强度评估<br>" +
-      "· <b>「讲讲勒索病毒」</b> — 安全案例科普");
+    const qs = [
+      { icon: "ic-scan", text: "帮我检测一下电脑" },
+      { icon: "ic-book", text: "什么是钓鱼邮件？" },
+      { icon: "ic-lock", text: "检查密码 123456" },
+      { icon: "ic-shield", text: "讲讲勒索病毒" },
+    ];
+    const cards = qs.map((q) =>
+      `<button class="wcard" data-q="${escapeHtml(q.text)}"><span class="wcard-ic">${ic(q.icon)}</span>${escapeHtml(q.text)}</button>`
+    ).join("");
+    const wrap = document.createElement("div");
+    wrap.className = "msg bot";
+    wrap.innerHTML = `<div class="avatar">${ic("ic-radar")}</div>
+      <div class="bubble">
+        <button class="msg-copy" title="复制">${ic("ic-copy")}</button>
+        <div class="bubble-inner">
+          <div class="welcome-title">你好，我是 OpenGuardian</div>
+          <div class="welcome-sub">你的 AI 个人数字安全助手 —— 点一下试试，或直接输入你的问题</div>
+          <div class="wcards">${cards}</div>
+        </div>
+      </div>`;
+    chatEl.appendChild(wrap);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    // 示例问题点击即问
+    wrap.querySelectorAll(".wcard").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        inputEl.value = btn.dataset.q;
+        send();
+      });
+    });
   }
 
   sessionListEl.addEventListener("click", (e) => {
@@ -729,6 +769,8 @@
       if (data.status === "ok") {
         statusText.textContent = `在线 · v${data.version}`;
         statusDot.classList.add("ok");
+        const verEl = document.querySelector(".logo .ver");
+        if (verEl) verEl.textContent = `v${data.version}`;
       }
     } catch (err) {
       statusText.textContent = "离线";

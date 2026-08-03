@@ -56,6 +56,11 @@ const ICONS = `
     <path d="M12 4L2.5 20h19L12 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
     <path d="M12 10v5M12 18v.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
   </symbol>
+  <!-- 复制 -->
+  <symbol id="ic-copy" viewBox="0 0 24 24">
+    <rect x="9" y="9" width="11" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" fill="none" stroke="currentColor" stroke-width="1.7"/>
+  </symbol>
   <!-- 检查（安全/成功） -->
   <symbol id="ic-check" viewBox="0 0 24 24">
     <path d="M5 13l4 4 10-11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>

@@ -41,7 +41,7 @@
   function addMsg(role, html) {
     const div = document.createElement("div");
     div.className = "msg " + role;
-    const avatar = role === "user" ? "🧑" : "🛡️";
+    const avatar = role === "user" ? ic("ic-shield") : ic("ic-radar");
     div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${html}</div>`;
     chatEl.appendChild(div);
     chatEl.scrollTop = chatEl.scrollHeight;
@@ -57,7 +57,7 @@
   function addTyping() {
     const div = document.createElement("div");
     div.className = "msg bot typing";
-    div.innerHTML = `<div class="avatar">🛡️</div><div class="bubble">正在思考</div>`;
+    div.innerHTML = `<div class="avatar">${ic("ic-radar")}</div><div class="bubble">正在思考</div>`;
     chatEl.appendChild(div);
     chatEl.scrollTop = chatEl.scrollHeight;
     return div;
@@ -68,7 +68,7 @@
     let html = "";
     for (const r of risks) {
       const cls = LEVEL_CLASS[r.level] || "low";
-      const icon = LEVEL_ICON[r.level] ? ic(LEVEL_ICON[r.level], `lv-${cls}`) : "⚪";
+      const icon = LEVEL_ICON[r.level] ? ic(LEVEL_ICON[r.level], `lv-${cls}`) : ic("ic-alert");
       html += `
         <div class="risk-card ${cls}">
           <div class="r-name">${icon} ${escapeHtml(r.name)}</div>
@@ -105,7 +105,7 @@
       const data = await resp.json();
       addMsg("bot", escapeHtml(data.message || "执行完成"));
     } catch (err) {
-      addMsg("bot", "⚠️ 执行失败：" + escapeHtml(err.message));
+      addMsg("bot", ic("ic-alert") + " 执行失败：" + escapeHtml(err.message));
     }
   });
 
@@ -204,11 +204,11 @@
         }
       } else if (!botMsg) {
         typing.remove();
-        addMsg("bot", "⚠️ 未收到有效回复");
+        addMsg("bot", ic("ic-alert") + " 未收到有效回复");
       }
     } catch (err) {
       typing.remove();
-      addMsg("bot", "⚠️ 连接服务器失败：" + escapeHtml(err.message));
+      addMsg("bot", ic("ic-alert") + " 连接服务器失败：" + escapeHtml(err.message));
     } finally {
       sendBtn.disabled = false;
       inputEl.focus();
@@ -243,14 +243,14 @@
     const other = dist.other || 0;
     const pct = (v) => Math.round((v / total) * 100);
     el.innerHTML = `
-      <div class="bar-row"><span class="lbl">🔴 高危</span>
+      <div class="bar-row"><span class="lbl"><i class="sw sw-high"></i>高危</span>
         <div class="bar-track"><div class="bar-fill high" style="width:${pct(high)}%"></div></div>
         <span class="val">${high}</span></div>
-      <div class="bar-row"><span class="lbl">🟡 其他</span>
+      <div class="bar-row"><span class="lbl"><i class="sw sw-other"></i>其他</span>
         <div class="bar-track"><div class="bar-fill other" style="width:${pct(other)}%"></div></div>
         <span class="val">${other}</span></div>
-      <div class="bar-row"><span class="lbl">📊 累计</span>
-        <div class="bar-track"><div class="bar-fill" style="width:100%;background:#334155"></div></div>
+      <div class="bar-row"><span class="lbl"><i class="sw sw-total"></i>累计</span>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:#2a2a2a"></div></div>
         <span class="val">${dist.total || 0}</span></div>`;
   }
 
@@ -325,7 +325,7 @@
             const title = sessionTitle(s.id) || s.id.slice(0, 10);
             return `<div class="session-item ${s.id === currentSessionId ? "active" : ""}" data-id="${s.id}">
               ${ic("ic-chat")}<span class="s-title">${escapeHtml(title)}</span>
-              <button class="s-del" data-del="${s.id}" title="删除会话">✕</button>
+              <button class="s-del" data-del="${s.id}" title="删除会话">${ic("ic-trash")}</button>
             </div>`;
           }).join("")
         : `<div style="color:#757575;font-size:11px;padding:8px">暂无会话</div>`;
@@ -358,7 +358,7 @@
       });
       if (!messages.length) addWelcome();
     } catch (err) {
-      addMsg("bot", "⚠️ 加载会话失败：" + escapeHtml(err.message));
+      addMsg("bot", ic("ic-alert") + " 加载会话失败：" + escapeHtml(err.message));
     }
     loadSessions();
   }

@@ -647,7 +647,17 @@
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);
       // KPI 卡片：高危/检测项基于最近一次检测（与分布同源）
-      const setKpi = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      const setKpi = (id, v) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const prev = el.textContent;
+        el.textContent = v;
+        if (prev !== String(v)) {
+          el.style.color = "#76b900";
+          el.style.textShadow = "0 0 12px rgba(118, 185, 0, 0.6)";
+          setTimeout(() => { el.style.color = ""; el.style.textShadow = ""; }, 400);
+        }
+      };
       const latest = data.last_scan || {};
       const high = latest.high || 0;
       setKpi("kpi-high", high);

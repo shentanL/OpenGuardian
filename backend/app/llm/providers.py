@@ -8,7 +8,7 @@ PROVIDERS: dict[str, dict] = {
     # ═══ 🇨🇳 国内主流 ═══
     "deepseek": {
         "name": "DeepSeek（深度求索）",
-        "base_url": "https://api.deepseek.com/anthropic",
+        "base_url": "https://api.deepseek.com",
         "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
         "default_model": "deepseek-v4-pro",
         "format": "openai",

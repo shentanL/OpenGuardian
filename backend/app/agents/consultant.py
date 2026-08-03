@@ -159,6 +159,12 @@ class ConsultantAgent(BaseAgent):
 
     def _handle_detect(self, user_input: str) -> AgentResult:
         result = self.bus.dispatch(AgentTask(intent=Intent.DETECT, params={"scope": "all"}, user_input=user_input))
+        # 同时采集真实系统账户安全数据
+        asset_result = self.bus.dispatch(AgentTask(intent=Intent.ASSET, params={"action": "scan"}, user_input=user_input))
+        if asset_result.risks:
+            result.risks = (result.risks or []) + asset_result.risks
+            if asset_result.message and "未发现" not in asset_result.message:
+                result.message += "\n\n" + asset_result.message
         risks = result.risks
         reply = self._humanize_risks(risks, result.message)
         return AgentResult(

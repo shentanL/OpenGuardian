@@ -84,6 +84,9 @@ class AnalystAgent(BaseAgent):
         elif action == "habit":
             text = str(task.params.get("text", ""))
             risks.extend(self._check_habits(text))
+        elif action == "scan":
+            # 真实系统账户安全扫描
+            risks.extend(self._scan_system_accounts())
 
         if not risks:
             return AgentResult(
@@ -99,7 +102,74 @@ class AnalystAgent(BaseAgent):
             risks=risks,
         )
 
-    # ---- 密码强度 ----
+    # ---- 真实系统账户安全扫描 ----
+    @staticmethod
+    def _scan_system_accounts() -> list[RiskItem]:
+        """采集真实 Windows 账户安全数据（不依赖用户输入）。"""
+        import subprocess
+
+        risks: list[RiskItem] = []
+        try:
+            r = subprocess.run(
+                ["net", "accounts"],
+                capture_output=True, text=True, errors="replace", timeout=8,
+            )
+            out = r.stdout.lower()
+            # 最小密码长度
+            m = re.search(r"minimum password length[:\s]*(\d+)", out)
+            if m and int(m.group(1)) < 8:
+                risks.append(RiskItem(
+                    item_type="asset", name="密码策略过弱",
+                    detail=f"系统最小密码长度仅 {m.group(1)} 位（建议 ≥8）",
+                    level=RiskLevel.MEDIUM,
+                    suggestion="运行 gpedit.msc → 计算机配置→Windows 设置→安全设置→账户策略→密码策略，设置最小密码长度 ≥8",
+                ))
+            # 密码最长使用期限
+            m2 = re.search(r"maximum password age[:\s]*(\d+)", out)
+            if m2 and int(m2.group(1)) == 42:
+                pass  # 42 天是默认值，正常
+            elif m2 and int(m2.group(1)) > 90:
+                risks.append(RiskItem(
+                    item_type="asset", name="密码过期周期过长",
+                    detail=f"密码最长使用 {m2.group(1)} 天（建议 ≤90 天）",
+                    level=RiskLevel.LOW,
+                    suggestion="在本地安全策略中设置密码最长使用期限 ≤90 天",
+                ))
+            # 锁定阈值
+            m3 = re.search(r"lockout threshold[:\s]*(\d+)", out)
+            if m3 and int(m3.group(1)) == 0:
+                risks.append(RiskItem(
+                    item_type="asset", name="账户锁定未启用",
+                    detail="暴力破解攻击无防护——连续输错密码不会锁定",
+                    level=RiskLevel.MEDIUM,
+                    suggestion="设置账户锁定阈值：5 次错误后锁定 30 分钟",
+                ))
+        except Exception:
+            pass
+
+        # 检查自动登录（注册表）
+        try:
+            import winreg
+            for key_path in [
+                r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon",
+            ]:
+                try:
+                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path) as key:
+                        auto_admin, _ = winreg.QueryValueEx(key, "AutoAdminLogon")
+                        if auto_admin == "1":
+                            risks.append(RiskItem(
+                                item_type="asset", name="自动登录已启用",
+                                detail="Windows 设置为自动登录——任何人开机都能进入你的桌面",
+                                level=RiskLevel.HIGH,
+                                suggestion="运行 netplwiz，勾选「要使用本计算机，用户必须输入用户名和密码」",
+                            ))
+                        break
+                except OSError:
+                    pass
+        except Exception:
+            pass
+
+        return risks
     def _check_password(self, pwd: str) -> list[RiskItem]:
         risks: list[RiskItem] = []
         if not pwd:

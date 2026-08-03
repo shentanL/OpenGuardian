@@ -1,20 +1,20 @@
 {
   "sources": {
     "urlhaus": {
-      "total": 1799,
-      "updated": "2026-08-03 19:02:00",
+      "total": 1882,
+      "updated": "2026-08-03 19:55:48",
       "ok": true
     },
     "firehol": {
       "total": 19346,
-      "updated": "2026-08-03 19:02:00",
+      "updated": "2026-08-03 19:55:48",
       "ok": true
     },
     "malwarebazaar": {
       "total": 5795,
-      "updated": "2026-08-03 19:02:00",
+      "updated": "2026-08-03 19:55:48",
       "ok": true
     }
   },
-  "last_update": "2026-08-03 19:02:00"
+  "last_update": "2026-08-03 19:55:48"
 }

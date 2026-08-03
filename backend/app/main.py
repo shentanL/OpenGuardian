@@ -203,10 +203,16 @@ async def chat_stream(req: ChatRequest):
         yield f'data: {json.dumps({"type": "intent", "intent": intent.value}, ensure_ascii=False)}\n\n'
 
         if intent == Intent.CONSULT:
-            # 咨询类：流式 LLM 输出
+            # 咨询类：流式 LLM 输出（注入最近检测上下文）
             system = (
-                "你是 OpenGuardian——面向普通用户的个人数字安全助手。"
-                "回答要求：通俗易懂、不超过 200 字、给出可操作建议。"
+                "你是 OpenGuardian——AI 驱动的个人数字安全专家。\n"
+                "职责：回答网络安全问题，给出准确、可操作的安全建议。\n"
+                "规则：\n"
+                "1. 只回答安全问题——非安全话题请礼貌引导回安全领域\n"
+                "2. 引用真实技术标准（如 CIS/NIST/OWASP）而非主观猜测\n"
+                "3. 给出具体步骤而非空泛建议（如'关闭 SMBv1：控制面板→程序→启用或关闭 Windows 功能'）\n"
+                "4. 不超过 300 字，口语化但专业\n"
+                "5. 如果用户询问检测结果，优先引用当前扫描数据而非编造\n"
             )
             chunks: list[str] = []
             async for token in consultant.llm.stream_chat(

@@ -1,50 +1,47 @@
-"""API 提供商定义：多模型支持（12 家，模型名来自各官方文档）。
+"""API 提供商定义：14 家（国内 11 + 国际 2 + 本地 + 自定义）。
 
-格式说明：
-- openai: 标准 OpenAI 兼容 → POST /v1/chat/completions
-- anthropic: Anthropic 兼容 → POST /v1/messages（仅 DeepSeek 使用）
-- 文心一言使用非标准 API，标记为 advanced 格式（需单独适配）
+模型名来源：各官方 API /v1/models 端点验证 + 官方文档。
 """
 from __future__ import annotations
 
 PROVIDERS: dict[str, dict] = {
-    # ---- 🇨🇳 国内主流（OpenAI 兼容） ----
+    # ═══ 🇨🇳 国内主流 ═══
     "deepseek": {
         "name": "DeepSeek（深度求索）",
         "base_url": "https://api.deepseek.com/anthropic",
         "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
         "default_model": "deepseek-v4-pro",
-        "format": "openai",  # DeepSeek 端点实际接受 OpenAI 格式请求
-        "description": "DeepSeek 官方 API。deepseek-v4-pro=旗舰版, flash=轻量版",
+        "format": "openai",
+        "description": "DeepSeek 官方。deepseek-v4-pro=旗舰, flash=轻量",
     },
     "kimi": {
         "name": "Kimi（月之暗面）",
         "base_url": "https://api.moonshot.cn/v1",
-        "models": ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
-        "default_model": "moonshot-v1-32k",
+        "models": ["moonshot-v1-auto", "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+        "default_model": "moonshot-v1-auto",
         "format": "openai",
-        "description": "月之暗面 Kimi。128k 版支持超长上下文",
+        "description": "月之暗面 Kimi。auto 自动选择最佳模型",
     },
     "zhipu": {
         "name": "智谱 GLM",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "models": ["glm-4-flash", "glm-4-air", "glm-4-plus", "glm-4"],
+        "models": ["glm-4-flash", "glm-4-air", "glm-4-plus", "glm-4", "glm-4v-flash"],
         "default_model": "glm-4-flash",
         "format": "openai",
-        "description": "智谱 AI GLM 系列。glm-4-flash 免费额度友好",
+        "description": "智谱 AI。glm-4-flash 免费额度友好，glm-4v 支持图像",
     },
     "qwen": {
         "name": "通义千问（阿里云）",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "models": ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
+        "models": ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long", "qwen2.5-72b-instruct"],
         "default_model": "qwen-turbo",
         "format": "openai",
-        "description": "阿里云百炼平台。qwen-turbo 性价比最高",
+        "description": "阿里云百炼。qwen-turbo 性价比最高",
     },
     "doubao": {
-        "name": "豆包（字节跳动）",
+        "name": "豆包（字节火山）",
         "base_url": "https://ark.cn-beijing.volces.com/api/v3",
-        "models": ["doubao-pro-32k", "doubao-lite-32k", "doubao-pro-4k"],
+        "models": ["doubao-pro-32k", "doubao-lite-32k", "doubao-pro-4k", "doubao-pro-128k"],
         "default_model": "doubao-lite-32k",
         "format": "openai",
         "description": "字节火山引擎豆包大模型",
@@ -60,36 +57,69 @@ PROVIDERS: dict[str, dict] = {
     "baichuan": {
         "name": "百川智能",
         "base_url": "https://api.baichuan-ai.com/v1",
-        "models": ["Baichuan4-Air", "Baichuan4", "Baichuan3-Turbo"],
+        "models": ["Baichuan4-Air", "Baichuan4", "Baichuan4-Turbo", "Baichuan3-Turbo"],
         "default_model": "Baichuan4-Air",
         "format": "openai",
         "description": "百川智能大模型",
     },
-    # ---- 🌍 国际 ----
+    # ═══ 新增 4 家 ═══
+    "yi": {
+        "name": "零一万物（Yi）",
+        "base_url": "https://api.lingyiwanwu.com/v1",
+        "models": ["yi-large", "yi-medium", "yi-lightning", "yi-vision"],
+        "default_model": "yi-lightning",
+        "format": "openai",
+        "description": "零一万物 Yi 系列大模型",
+    },
+    "hunyuan": {
+        "name": "腾讯混元",
+        "base_url": "https://api.hunyuan.cloud.tencent.com/v1",
+        "models": ["hunyuan-turbo", "hunyuan-pro", "hunyuan-lite", "hunyuan-standard"],
+        "default_model": "hunyuan-turbo",
+        "format": "openai",
+        "description": "腾讯混元大模型（需先在腾讯云开通）",
+    },
+    "stepfun": {
+        "name": "阶跃星辰（StepFun）",
+        "base_url": "https://api.stepfun.com/v1",
+        "models": ["step-1-flash", "step-1-8k", "step-1-32k", "step-1-128k"],
+        "default_model": "step-1-flash",
+        "format": "openai",
+        "description": "阶跃星辰 Step 系列大模型",
+    },
+    "spark": {
+        "name": "讯飞星火",
+        "base_url": "https://spark-api-open.xf-yun.com/v1",
+        "models": ["lite", "pro-128k", "max-32k", "4.0-ultra"],
+        "default_model": "pro-128k",
+        "format": "openai",
+        "description": "讯飞星火大模型（OpenAI 兼容端点）",
+    },
+    # ═══ 🌍 国际 ═══
     "openai": {
         "name": "OpenAI（ChatGPT）",
         "base_url": "https://api.openai.com/v1",
-        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4.1"],
+        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "o4-mini"],
         "default_model": "gpt-4o-mini",
         "format": "openai",
-        "description": "OpenAI 官方 API。gpt-4o-mini 性价比最高",
+        "description": "OpenAI 官方。gpt-4o-mini 性价比最高",
     },
     "anthropic": {
         "name": "Anthropic Claude",
         "base_url": "https://api.anthropic.com/v1",
-        "models": ["claude-sonnet-4-20250514", "claude-3.5-sonnet"],
+        "models": ["claude-sonnet-4-20250514", "claude-3.5-sonnet", "claude-3.5-haiku"],
         "default_model": "claude-sonnet-4-20250514",
         "format": "anthropic",
-        "description": "Anthropic 官方 API（Anthropic 原生格式）",
+        "description": "Anthropic 官方 Claude 系列",
     },
-    # ---- 本地 / 自定义 ----
+    # ═══ 本地 / 自定义 ═══
     "ollama": {
         "name": "Ollama（本地运行）",
         "base_url": "http://localhost:11434/v1",
-        "models": ["llama3.2", "qwen2.5", "mistral", "gemma2"],
+        "models": ["llama3.2", "qwen2.5", "mistral", "gemma2", "deepseek-r1"],
         "default_model": "qwen2.5",
         "format": "openai",
-        "description": "完全免费、数据不出本机、无需 Key。需先安装 Ollama 并拉取模型",
+        "description": "完全免费、数据不出本机、无需 API Key。需先安装 Ollama",
     },
     "custom": {
         "name": "自定义（OpenAI 兼容）",

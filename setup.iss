@@ -29,7 +29,7 @@ UninstallDisplayIcon={app}\OpenGuardian.ico
 PrivilegesRequired=admin
 
 [Languages]
-Name: "chinese"; MessagesFile: "compiler:Default.isl"
+Name: "chinese"; MessagesFile: "C:\Users\14845\AppData\Local\InnoSetup\Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]

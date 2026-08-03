@@ -232,7 +232,7 @@ async def chat_stream(req: ChatRequest):
         else:
             # 检测/执行等其他意图：流式展示处理阶段
             stages = {
-                Intent.DETECT: ["🔍 正在检测进程安全...", "🌐 分析网络连接...", "📊 评估系统资源...", "🛡️ 扫描安全漏洞...", "🔐 检查账户安全..."],
+                Intent.DETECT: ["🔍 正在检测进程安全...", "🌐 分析网络连接...", "📊 评估系统资源...", "🛡️ 扫描安全漏洞...", "🔐 检查账户安全...", "🛡️ 核查 Defender...", "📦 检查系统更新...", "⚙️ 审计后台服务..."],
                 Intent.ASSET: ["🔐 检查密码策略...", "👤 验证账户状态...", "🔑 评估安全配置..."],
             }
             steps = stages.get(intent, ["处理中..."])
@@ -314,8 +314,8 @@ def stats() -> dict:
     # 风险分布：基于最近一次检测的 risks（等级 × 7 类细分）
     levels = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     types = {"process": 0, "network": 0, "resource": 0, "asset": 0,
-             "malicious_ip": 0, "malicious_domain": 0, "port": 0, "vuln": 0,
-             "malware_hash": 0}
+             "malicious_ip": 0, "malicious_domain": 0, "port": 0, "vuln": 0, "malware_hash": 0,
+             "defender": 0, "updates": 0, "services": 0}
     if latest:
         for r in latest.get("risks", []):
             lv = str(r.get("level", "low")).lower()

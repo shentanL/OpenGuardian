@@ -200,7 +200,7 @@ class DetectorAgent(BaseAgent):
     description = "终端安全检测：异常进程、可疑网络连接、资源健康"
 
     def handle(self, task: AgentTask) -> AgentResult:
-        scope = task.params.get("scope", "all")  # all / process / network / resource / vuln
+        scope = task.params.get("scope", "all")
         risks: list[RiskItem] = []
         if scope in ("all", "process"):
             risks.extend(self._scan_processes())
@@ -210,6 +210,12 @@ class DetectorAgent(BaseAgent):
             risks.extend(self._scan_resources())
         if scope in ("all", "vuln"):
             risks.extend(self._scan_vulnerabilities())
+        if scope in ("all", "defender"):
+            risks.extend(self._scan_defender())
+        if scope in ("all", "updates"):
+            risks.extend(self._scan_updates())
+        if scope in ("all", "services"):
+            risks.extend(self._scan_services())
 
         summary = (
             f"检测完成：发现 {len(risks)} 项风险"
@@ -424,4 +430,117 @@ class DetectorAgent(BaseAgent):
                 ))
         except Exception as exc:  # noqa: BLE001
             logger.warning("resource scan error: %s", exc)
+        return risks
+
+    # ---- Windows Defender 状态 ----
+    @staticmethod
+    def _scan_defender() -> list[RiskItem]:
+        """检测 Windows Defender 运行状态（大厂标准：AV 引擎健康监测）。"""
+        import subprocess
+        risks: list[RiskItem] = []
+        try:
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "Get-MpComputerStatus | Select-Object AMRunningMode,AntispywareEnabled,AntivirusEnabled,RealTimeProtectionEnabled,OnAccessProtectionEnabled,IoavProtectionEnabled,NISEnabled,LastFullScanAge | ConvertTo-Json -Compress"],
+                capture_output=True, text=True, errors="replace", timeout=15,
+            )
+            import json
+            s = json.loads(r.stdout)
+            if not s.get("AntivirusEnabled"):
+                risks.append(RiskItem(
+                    item_type="defender", name="Defender 未启用",
+                    detail="Windows Defender 防病毒引擎未启动——系统无病毒防护",
+                    level=RiskLevel.CRITICAL,
+                    suggestion="运行 Set-MpPreference -DisableRealtimeMonitoring $false 启用实时保护",
+                ))
+            elif not s.get("RealTimeProtectionEnabled"):
+                risks.append(RiskItem(
+                    item_type="defender", name="实时保护已关闭",
+                    detail="Defender 实时监控被禁用——新文件不被自动扫描",
+                    level=RiskLevel.HIGH,
+                    suggestion="在 Windows 安全中心 → 病毒和威胁防护 → 管理设置中开启实时保护",
+                ))
+            last_scan = s.get("LastFullScanAge", -1)
+            if isinstance(last_scan, (int, float)) and last_scan > 7 * 86400:
+                risks.append(RiskItem(
+                    item_type="defender", name="长期未全盘扫描",
+                    detail=f"最近一次全盘扫描在 {int(last_scan / 86400)} 天前",
+                    level=RiskLevel.MEDIUM,
+                    suggestion="建议每月至少运行一次全盘扫描（Windows 安全中心 → 扫描选项 → 全面扫描）",
+                ))
+        except Exception:
+            pass
+        return risks
+
+    # ---- Windows Update ----
+    @staticmethod
+    def _scan_updates() -> list[RiskItem]:
+        """检测 Windows Update 状态（大厂标准：补丁合规审计）。"""
+        import subprocess
+        risks: list[RiskItem] = []
+        try:
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "(New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher().GetTotalHistoryCount()"],
+                capture_output=True, text=True, errors="replace", timeout=10,
+            )
+            # COM unavailable in most cases, try PSWindowsUpdate or wuauclt
+        except Exception:
+            pass
+        try:
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "Get-HotFix | Measure-Object | Select-Object -ExpandProperty Count"],
+                capture_output=True, text=True, errors="replace", timeout=10,
+            )
+            count = int(r.stdout.strip() or 0)
+            if count < 10:
+                risks.append(RiskItem(
+                    item_type="updates", name="系统补丁极少",
+                    detail=f"仅安装 {count} 个 Windows 补丁——大量已知漏洞未修复",
+                    level=RiskLevel.HIGH,
+                    suggestion="运行 Windows Update 安装所有重要更新（设置 → 更新和安全 → 检查更新）",
+                ))
+        except Exception:
+            pass
+        return risks
+
+    # ---- 服务固化检查 ----
+    @staticmethod
+    def _scan_services() -> list[RiskItem]:
+        """检测不安全的系统服务（大厂标准：最小化攻击面）。"""
+        import subprocess
+        risks: list[RiskItem] = []
+        risky_services = {
+            "RemoteRegistry": ("远程注册表服务", "允许远程修改注册表——被入侵后攻击者可静默修改系统配置", RiskLevel.HIGH,
+                "sc config RemoteRegistry start=disabled"),
+            "Telnet": ("Telnet 服务", "明文传输协议——登录凭证可被网络嗅探窃取", RiskLevel.CRITICAL,
+                "sc config TlntSvr start=disabled"),
+            "RemoteAccess": ("路由与远程访问", "允许外部建立 VPN/拨号连接进入内网", RiskLevel.MEDIUM,
+                "sc config RemoteAccess start=disabled"),
+            "lltdsvc": ("链路层拓扑发现", "暴露网络结构给同子网的所有设备", RiskLevel.LOW,
+                "sc config lltdsvc start=disabled"),
+            "wins": ("WINS 服务", "已过时的 NetBIOS 名称解析——易被利用投毒", RiskLevel.LOW,
+                "sc config WINS start=disabled"),
+            "SNMP": ("SNMP 服务", "网络管理协议——配置不当会泄露系统信息", RiskLevel.MEDIUM,
+                "停止 SNMP 服务"),
+        }
+        try:
+            r = subprocess.run(
+                ["sc", "query"], capture_output=True, text=True, errors="replace", timeout=8,
+            )
+            running = set()
+            for line in r.stdout.splitlines():
+                if "RUNNING" in line:
+                    parts = line.strip().split()
+                    if parts:
+                        running.add(parts[0].lower())
+            for svc, (name, desc, level, fix) in risky_services.items():
+                if svc.lower() in running:
+                    risks.append(RiskItem(
+                        item_type="services", name=name,
+                        detail=desc, level=level, suggestion=fix,
+                    ))
+        except Exception:
+            pass
         return risks

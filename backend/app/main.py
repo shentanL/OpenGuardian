@@ -36,7 +36,7 @@ _sampler: ResourceSampler | None = None
 async def lifespan(_app: FastAPI):
     """服务生命周期：启动资源采样器，关闭时停止。"""
     global _sampler
-    _sampler = ResourceSampler(get_db(), interval=30)
+    _sampler = ResourceSampler(get_db(), interval=5)
     _sampler.start()
     try:
         yield

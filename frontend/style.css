@@ -31,9 +31,9 @@
 body {
   font-family: var(--sans);
   background:
-    /* 雷达网格 */
-    linear-gradient(rgba(118, 185, 0, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(118, 185, 0, 0.035) 1px, transparent 1px),
+    /* 雷达网格（淡化，让粒子网络可见） */
+    linear-gradient(rgba(118, 185, 0, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(118, 185, 0, 0.022) 1px, transparent 1px),
     var(--bg);
   background-size: 34px 34px;
   color: var(--white);
@@ -41,7 +41,13 @@ body {
   overflow: hidden;
 }
 
-.app { display: flex; height: 100vh; }
+/* ═══ 粒子网络背景（canvas）═══ */
+.bg-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;   /* 不拦截交互 */
+}
+
+.app { display: flex; height: 100vh; position: relative; z-index: 1; }
 
 /* ═══ SVG 图标 ═══ */
 .ic { width: 16px; height: 16px; vertical-align: -3px; display: inline-block; }

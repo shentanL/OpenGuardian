@@ -403,8 +403,11 @@ body {
 .bar-fill.sw-ip { background: linear-gradient(90deg, #7a0e0e, #e52020); box-shadow: 0 0 6px rgba(229, 32, 32, 0.3); }
 .bar-fill.sw-domain { background: linear-gradient(90deg, #8a3a00, #df6500); }
 .bar-fill.sw-port { background: linear-gradient(90deg, #8a5a00, #ef9100); }
-.bar-fill.sw-resource { background: linear-gradient(90deg, #1e4a00, #3f8500); }
-.bar-fill.sw-asset { background: linear-gradient(90deg, #2a4a00, #76b900); }
+.bar-fill.sw-resource { background: linear-gradient(90deg, #2a4a2a, #4fd14f); }
+.bar-fill.sw-asset { background: linear-gradient(90deg, #2a2a4a, #6f6fff); }
+.bar-fill.sw-defender { background: linear-gradient(90deg, #284a4a, #4fbcd9); }
+.bar-fill.sw-updates { background: linear-gradient(90deg, #4a2a4a, #c94fff); }
+.bar-fill.sw-services { background: linear-gradient(90deg, #4a2a2a, #ff6f4f); }
 .dist-group {
   font-size: 9px; color: var(--gray-500); letter-spacing: 2px;
   text-transform: uppercase; font-weight: 700; margin: 4px 0 2px;

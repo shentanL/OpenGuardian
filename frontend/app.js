@@ -230,6 +230,10 @@
           if (!sessionMeta[currentSessionId].title) sessionMeta[currentSessionId].title = text.slice(0, 18);
           loadSessions();
         }
+        // 检测/扫描完成后自动刷新仪表盘数据
+        if (finalData.risks && finalData.risks.length > 0) {
+          loadDashboard();
+        }
 
         if (finalData.needs_confirmation && finalData.execute_hint) {
           const { pid } = finalData.execute_hint;
@@ -297,6 +301,9 @@
     ["port", "危险端口", "sw-port"],
     ["resource", "资源占用", "sw-resource"],
     ["asset", "资产安全", "sw-asset"],
+    ["defender", "Defender", "sw-defender"],
+    ["updates", "系统更新", "sw-updates"],
+    ["services", "服务风险", "sw-services"],
   ];
 
   function renderRiskBars(dist) {

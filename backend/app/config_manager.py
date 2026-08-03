@@ -46,20 +46,22 @@ def get_api_key() -> str:
     key = cfg.get("api_key") or ""
     if key:
         return key
-    # 回退：从 .env 读取（适配已配置 .env 未写 config 的场景）
+    # 回退：从 .env 读取
     import os as _os
-    from pathlib import Path as _Path
     try:
         from dotenv import load_dotenv
-        env_path = _Path(__file__).resolve().parent.parent / ".env"
+        # frozen 时 .env 在 _MEIPASS/backend/，dev 时在 backend/
+        import sys as _sys
+        if getattr(_sys, "frozen", False):
+            env_path = Path(_sys._MEIPASS) / "backend" / ".env"
+        else:
+            env_path = Path(__file__).resolve().parent.parent / ".env"
         if env_path.exists():
             load_dotenv(env_path)
             key = _os.getenv("DEEPSEEK_API_KEY") or ""
             if key:
-                # 自动同步到 config.json
                 cfg["api_key"] = key
-                from pathlib import Path as _P
-                _P(str(CONFIG_PATH)).write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+                Path(str(CONFIG_PATH)).write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception:
         pass
     return key

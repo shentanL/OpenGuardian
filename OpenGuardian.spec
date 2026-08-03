@@ -23,6 +23,7 @@ a = Analysis(
         (str(FRONTEND), "frontend"),     # 前端文件（HTML/CSS/JS/icons）
         (str(KB_DATA), "backend/kb_data"),  # 知识库数据文件
         (str(BASE / "OpenGuardian.ico"), "."),  # 图标
+        (str(BASE / "backend" / ".env"), "backend"),  # .env 环境变量（API Key）
     ],
     hiddenimports=[
         "uvicorn", "uvicorn.logging", "uvicorn.loops",
@@ -39,6 +40,7 @@ a = Analysis(
         "app.kb", "app.kb.blacklists", "app.kb.glossary",
         "app.kb.updater", "app.kb.virus_hashes",
         "app.config_manager", "app.sampler", "app.security",
+        "dotenv",  # python-dotenv（.env 读取）
     ],
     hookspath=[],
     hooksconfig={},

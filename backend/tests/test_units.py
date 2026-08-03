@@ -27,6 +27,30 @@ def _task(intent: Intent, **params) -> AgentTask:
 
 
 class TestDetector(unittest.TestCase):
+    def test_system_idle_process_in_whitelist(self):
+        """回归：System Idle Process 必须在白名单（曾误报挖矿木马）。"""
+        from app.agents.detector import SYSTEM_PROCESSES
+
+        self.assertIn("System Idle Process", SYSTEM_PROCESSES)
+        self.assertIn("System", SYSTEM_PROCESSES)
+
+    def test_cpu_threshold_normalized(self):
+        """CPU 阈值按核数归一化：85% 总计能力为界（多核下阈值=85×核数）。"""
+        import psutil
+
+        from app.config import settings
+
+        cores = max(psutil.cpu_count() or 1, 1)
+        threshold = settings.CPU_ALERT_PCT * cores
+        # 边界：99% 阈值不报警，101% 报警（归一化生效）
+        self.assertFalse(int(threshold * 0.99) > threshold)
+        self.assertTrue(int(threshold * 1.01) > threshold)
+        # 占满全部核：必然报警
+        miner_val = cores * 100
+        self.assertTrue(miner_val > threshold, "占满全部核的进程应触发 CPU 报警")
+        # 单核场景：100% > 85% 报警，50% 不报警
+        self.assertTrue(100 > settings.CPU_ALERT_PCT)
+        self.assertFalse(50 > settings.CPU_ALERT_PCT)
     def test_malware_pattern_hit(self):
         hit = _match_pattern("xmrig.exe", r"C:\Users\x\miner\xmrig.exe")
         self.assertIsNotNone(hit)

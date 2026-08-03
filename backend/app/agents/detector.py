@@ -156,9 +156,10 @@ SUSPICIOUS_PORTS: dict[int, str] = {
 
 # 系统关键进程（永不标记，白名单）
 SYSTEM_PROCESSES = {
-    "svchost.exe", "System", "Idle", "csrss.exe", "wininit.exe",
+    "svchost.exe", "System", "Idle", "System Idle Process", "csrss.exe", "wininit.exe",
     "winlogon.exe", "services.exe", "lsass.exe", "smss.exe", "explorer.exe",
     "dwm.exe", "fontdrvhost.exe", "Registry", "Memory Compression",
+    "conhost.exe", "sihost.exe", "taskhostw.exe", "dllhost.exe",
 }
 
 # 用户白名单（SQLite 持久化；此处为内存兜底）
@@ -246,8 +247,10 @@ class DetectorAgent(BaseAgent):
                         ))
                         continue
 
-                    # 2) 资源占用异常
-                    if cpu > settings.CPU_ALERT_PCT:
+                    # 2) 资源占用异常（CPU 按核数归一化：单进程占 85% 总算力才报警）
+                    #    psutil per-process cpu_percent 上限 = 100×核数
+                    cores = max(psutil.cpu_count() or 1, 1)
+                    if cpu > settings.CPU_ALERT_PCT * cores:
                         risks.append(RiskItem(
                             item_type="process",
                             name=name,

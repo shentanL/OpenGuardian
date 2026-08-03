@@ -25,12 +25,15 @@ DEFAULT_SYSTEM = (
 
 class LLMClient:
     def __init__(self) -> None:
-        self.api_key = settings.DEEPSEEK_API_KEY
-        self.base_url = settings.DEEPSEEK_BASE_URL
-        self.model = settings.LLM_MODEL
+        from ..config_manager import get_api_key, get_base_url, get_format, get_model
+
+        self.api_key = get_api_key() or settings.DEEPSEEK_API_KEY
+        self.base_url = get_base_url() or settings.DEEPSEEK_BASE_URL
+        self.model = get_model() or settings.LLM_MODEL
+        self.api_format = get_format() or "anthropic"  # openai 或 anthropic
         self.timeout = settings.LLM_TIMEOUT
-        # DeepSeek 原生端点（OpenAI 兼容）
-        self.chat_url = "https://api.deepseek.com/chat/completions"
+        # 动态 API 端点（多提供商支持）
+        self.chat_url = f"{self.base_url.rstrip('/')}/chat/completions" if self.base_url else "https://api.deepseek.com/chat/completions"
 
     @property
     def available(self) -> bool:

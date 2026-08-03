@@ -22,19 +22,50 @@
     <div class="cc-section">
       <div class="cc-label">
         <svg class="ic"><use href="#ic-bolt"/></svg>
-        <span>DeepSeek API Key（必填）</span>
+        <span>选择 AI 服务提供商</span>
+      </div>
+      <select id="provider-select" class="cc-select">
+        <option value="">加载中…</option>
+      </select>
+      <div id="provider-desc" class="cc-hint"></div>
+    </div>
+
+    <div class="cc-section" id="api-key-section">
+      <div class="cc-label">
+        <svg class="ic"><use href="#ic-lock"/></svg>
+        <span>API Key</span>
       </div>
       <div class="cc-input-wrap">
         <input id="api-key" type="password" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
                autocomplete="off" spellcheck="false">
         <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
       </div>
-      <div class="cc-hint">
-        如何获取？访问 <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>，
-        注册后在「API Keys」页面创建。
+      <div class="cc-hint" id="key-hint">
+        如何获取？访问对应提供商的官网，注册后在 API 页面创建 Key。
         <br>Key 仅存储在你本机，不会上传到任何云端。
       </div>
-      <div id="key-status" class="cc-status"></div>
+    </div>
+
+    <div class="cc-section" id="custom-section" style="display:none">
+      <div class="cc-label">
+        <svg class="ic"><use href="#ic-net"/></svg>
+        <span>自定义 API 地址（可选）</span>
+      </div>
+      <div class="cc-input-wrap">
+        <input id="custom-url" type="text" placeholder="https://your-api.com/v1"
+               autocomplete="off" spellcheck="false">
+      </div>
+      <div class="cc-hint">输入与 OpenAI 兼容的 API 端点地址</div>
+    </div>
+
+    <div class="cc-section">
+      <div class="cc-label">
+        <svg class="ic"><use href="#ic-cpu"/></svg>
+        <span>模型选择</span>
+      </div>
+      <select id="model-select" class="cc-select">
+        <option value="">使用默认模型</option>
+      </select>
     </div>
 
     <div class="cc-section">
@@ -62,59 +93,117 @@
 const apiInput = document.getElementById("api-key");
 const btnStart = document.getElementById("btn-start");
 const toggleBtn = document.getElementById("toggle-key");
-const statusEl = document.getElementById("key-status");
 const errorEl = document.getElementById("cc-error");
+const providerSel = document.getElementById("provider-select");
+const modelSel = document.getElementById("model-select");
+const customSection = document.getElementById("custom-section");
+const customUrl = document.getElementById("custom-url");
+const apiKeySection = document.getElementById("api-key-section");
+const keyHint = document.getElementById("key-hint");
+const providerDesc = document.getElementById("provider-desc");
 
-// 检查是否已有配置
+let providers = [];
+let currentProvider = null;
+
+// 加载配置和提供商列表
 async function checkConfig() {
   try {
     const resp = await fetch("/api/config");
     const data = await resp.json();
+    providers = data.providers || [];
+
+    // 渲染提供商选择器
+    providerSel.innerHTML = providers.map((p) =>
+      `<option value="${p.key}" ${p.key === data.provider ? "selected" : ""}>${p.name}</option>`
+    ).join("");
+    if (data.provider) {
+      currentProvider = providers.find((p) => p.key === data.provider);
+      updateProviderUI(currentProvider);
+    }
     if (data.configured) {
-      // 已配置，直接跳转到主界面
       window.location.href = "/";
       return;
     }
-    if (!btnStart) return;
-    btnStart.textContent = "等待输入 API Key…";
   } catch (err) {
     console.warn("配置检查失败:", err);
   }
 }
 
+function updateProviderUI(p) {
+  if (!p) return;
+  currentProvider = p;
+  providerDesc.textContent = p.description || "";
+  // 更新模型列表
+  const models = p.models || [];
+  modelSel.innerHTML = `<option value="">默认模型（${p.default_model || "自动"}）</option>` +
+    models.map((m) => `<option value="${m}">${m}</option>`).join("");
+  // Ollama 不需要 API Key
+  if (p.key === "ollama") {
+    apiKeySection.style.display = "none";
+  } else {
+    apiKeySection.style.display = "";
+    keyHint.innerHTML = `如何获取？访问 ${p.name} 官网，注册后在 API 页面创建 Key。<br>Key 仅存储在你本机，不会上传到任何云端。`;
+  }
+  // 自定义显示地址输入
+  customSection.style.display = p.key === "custom" ? "" : "none";
+}
+
+providerSel?.addEventListener("change", () => {
+  const p = providers.find((x) => x.key === providerSel.value);
+  updateProviderUI(p);
+});
+
+// 显示/隐藏 Key
+toggleBtn?.addEventListener("click", () => {
+  apiInput.type = apiInput.type === "password" ? "text" : "password";
+});
+
 // 输入检测
 apiInput?.addEventListener("input", () => {
   const val = apiInput.value.trim();
-  const valid = val.startsWith("sk-") && val.length >= 30;
+  const needsKey = providerSel.value !== "ollama";
+  const valid = !needsKey || (val.length >= 10);
   btnStart.disabled = !valid;
   btnStart.querySelector("span").textContent =
-    valid ? "保存并开始使用" : (val ? "Key 格式无效（应以 sk- 开头）" : "请输入 API Key");
+    valid ? "保存并开始使用" : (val ? "请输入有效的 API Key" : "请输入 API Key");
   errorEl.classList.add("hidden");
 });
 
 // 保存配置
 btnStart?.addEventListener("click", async () => {
+  const provider = providerSel.value;
+  if (!provider) {
+    errorEl.textContent = "请选择 AI 服务提供商";
+    errorEl.classList.remove("hidden");
+    return;
+  }
   const key = apiInput.value.trim();
-  if (!key.startsWith("sk-")) {
-    errorEl.textContent = "Key 格式无效，应以 sk- 开头";
+  const needsKey = provider !== "ollama";
+  if (needsKey && !key) {
+    errorEl.textContent = "请输入 API Key（Ollama 本地模型除外）";
     errorEl.classList.remove("hidden");
     return;
   }
   btnStart.disabled = true;
-  btnStart.querySelector("span").textContent = "正在验证…";
+  btnStart.querySelector("span").textContent = "正在保存…";
   errorEl.classList.add("hidden");
   try {
     const resp = await fetch("/api/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: key }),
+      body: JSON.stringify({
+        provider: provider,
+        api_key: key,
+        base_url: provider === "custom" ? customUrl.value.trim() : "",
+        model: modelSel.value || "",
+      }),
     });
     const data = await resp.json();
     if (data.ok) {
       btnStart.querySelector("span").textContent = "配置成功，正在进入…";
       setTimeout(() => { window.location.href = "/"; }, 600);
     } else {
-      errorEl.textContent = data.error || "配置失败，请检查 Key 是否正确";
+      errorEl.textContent = data.error || "保存失败，请重试";
       errorEl.classList.remove("hidden");
       btnStart.disabled = false;
       btnStart.querySelector("span").textContent = "保存并开始使用";
@@ -124,11 +213,6 @@ btnStart?.addEventListener("click", async () => {
     errorEl.classList.remove("hidden");
     btnStart.disabled = false;
   }
-});
-
-// 显示/隐藏 Key
-toggleBtn?.addEventListener("click", () => {
-  apiInput.type = apiInput.type === "password" ? "text" : "password";
 });
 
 checkConfig();

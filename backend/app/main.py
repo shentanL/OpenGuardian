@@ -94,23 +94,27 @@ def health() -> HealthResponse:
 # ---- 配置管理 ----
 @app.get("/api/config")
 def get_config() -> dict:
-    """检查是否已完成配置（有 API Key）。"""
-    key = os.getenv("DEEPSEEK_API_KEY") or settings.DEEPSEEK_API_KEY or ""
-    return {"configured": bool(key and key not in ("", "your-api-key-here"))}
+    """返回当前配置状态 + 所有可用提供商信息。"""
+    from .config_manager import is_configured as _configured, get_all_providers, get_provider
+
+    return {
+        "configured": _configured(),
+        "provider": get_provider(),
+        "providers": get_all_providers(),
+    }
 
 
 @app.post("/api/config")
 def set_config(payload: dict) -> dict:
-    """保存 API Key 到 .env 文件。"""
-    api_key = (payload or {}).get("api_key", "").strip()
-    if not api_key or not api_key.startswith("sk-"):
-        return {"ok": False, "error": "Key 格式无效，应以 sk- 开头"}
-    env_path = Path(__file__).resolve().parent.parent / ".env"
-    env_path.write_text(f"DEEPSEEK_API_KEY={api_key}\n", encoding="utf-8")
-    # 重新设置环境变量
-    os.environ["DEEPSEEK_API_KEY"] = api_key
-    settings.DEEPSEEK_API_KEY = api_key
-    return {"ok": True}
+    """保存提供商配置到 config.json。"""
+    from .config_manager import save_config
+
+    return save_config(
+        provider=payload.get("provider", "deepseek"),
+        api_key=payload.get("api_key", ""),
+        base_url=payload.get("base_url", ""),
+        model=payload.get("model", ""),
+    )
 
 
 @app.get("/api/agents")

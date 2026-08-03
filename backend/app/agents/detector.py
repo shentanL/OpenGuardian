@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import psutil
 
@@ -202,20 +203,32 @@ class DetectorAgent(BaseAgent):
     def handle(self, task: AgentTask) -> AgentResult:
         scope = task.params.get("scope", "all")
         risks: list[RiskItem] = []
+
+        # 并行化：8 项检测模块并发执行（ThreadPoolExecutor）
+        modules = []
         if scope in ("all", "process"):
-            risks.extend(self._scan_processes())
+            modules.append(("process", self._scan_processes))
         if scope in ("all", "network"):
-            risks.extend(self._scan_network())
+            modules.append(("network", self._scan_network))
         if scope in ("all", "resource"):
-            risks.extend(self._scan_resources())
+            modules.append(("resource", self._scan_resources))
         if scope in ("all", "vuln"):
-            risks.extend(self._scan_vulnerabilities())
+            modules.append(("vuln", self._scan_vulnerabilities))
         if scope in ("all", "defender"):
-            risks.extend(self._scan_defender())
+            modules.append(("defender", self._scan_defender))
         if scope in ("all", "updates"):
-            risks.extend(self._scan_updates())
+            modules.append(("updates", self._scan_updates))
         if scope in ("all", "services"):
-            risks.extend(self._scan_services())
+            modules.append(("services", self._scan_services))
+
+        if modules:
+            with ThreadPoolExecutor(max_workers=min(8, len(modules))) as pool:
+                futures = {pool.submit(fn): name for name, fn in modules}
+                for future in as_completed(futures):
+                    try:
+                        risks.extend(future.result())
+                    except Exception:
+                        pass
 
         summary = (
             f"检测完成：发现 {len(risks)} 项风险"

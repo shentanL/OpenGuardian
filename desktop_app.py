@@ -1,0 +1,50 @@
+"""OpenGuardian 桌面版 —— PyWebView 原生窗口包装。
+
+双击运行此文件启动桌面应用：
+- 后台启动 FastAPI 服务（端口 8300）
+- 打开原生桌面窗口加载应用界面
+- 关闭窗口时自动停止服务
+"""
+from __future__ import annotations
+
+import sys
+import threading
+from pathlib import Path
+
+import uvicorn
+import webview
+
+
+PROJECT_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = PROJECT_DIR / "backend"
+PORT = 8300
+URL = f"http://127.0.0.1:{PORT}"
+TITLE = "OpenGuardian · AI 数字安全平台"
+
+
+def _start_server() -> None:
+    """后台线程启动 FastAPI 服务。"""
+    sys.path.insert(0, str(BACKEND_DIR))
+    uvicorn.run(
+        "app.main:app",
+        host="127.0.0.1",
+        port=PORT,
+        log_level="warning",
+    )
+
+
+def main() -> None:
+    # 启动后端服务（后台线程）
+    server = threading.Thread(target=_start_server, daemon=True)
+    server.start()
+
+    # 打开桌面窗口
+    webview.create_window(TITLE, URL, width=1280, height=900, min_size=(900, 600))
+    webview.start()
+
+    # 窗口关闭后停止服务
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

@@ -38,8 +38,23 @@ def main() -> None:
     server = threading.Thread(target=_start_server, daemon=True)
     server.start()
 
+    # 等待服务就绪
+    import time
+
+    time.sleep(2)
+
+    # 检查配置状态 → 决定打开哪个页面
+    try:
+        import urllib.request, json as _json
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}/api/config") as r:
+            cfg = _json.loads(r.read())
+        target_url = URL if cfg.get("configured") else f"{URL}/config"
+    except Exception:  # noqa: BLE001
+        target_url = URL
+
     # 打开桌面窗口
-    webview.create_window(TITLE, URL, width=1280, height=900, min_size=(900, 600))
+    webview.create_window(TITLE, target_url, width=1280, height=900, min_size=(900, 600))
     webview.start()
 
     # 窗口关闭后停止服务

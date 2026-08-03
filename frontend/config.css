@@ -1,0 +1,188 @@
+/* ═══ OpenGuardian 配置页 ≡ NVIDIA 工业黑 + GitHub 向导 ═══ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #000;
+  --bg-card: #0d0d0d;
+  --green: #76b900;
+  --green-bright: #bff230;
+  --white: #ffffff;
+  --gray-100: #e0e0e0;
+  --gray-300: #a7a7a7;
+  --gray-400: #898989;
+  --gray-500: #757575;
+  --gray-600: #555;
+  --gray-border: #2a2a2a;
+  --red: #e52020;
+  --radius: 2px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei", Arial, Helvetica, sans-serif;
+}
+
+body {
+  font-family: var(--sans);
+  background:
+    linear-gradient(rgba(118, 185, 0, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(118, 185, 0, 0.018) 1px, transparent 1px),
+    var(--bg);
+  background-size: 34px 34px;
+  color: var(--white);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+}
+
+/* ═══ 卡片 ═══ */
+.config-container {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 520px;
+  padding: 24px;
+}
+
+.config-card {
+  background: var(--bg-card);
+  border: 1px solid var(--gray-border);
+  border-top: 2px solid var(--green);
+  border-radius: var(--radius);
+  padding: 32px 28px 28px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.cc-header {
+  text-align: center; margin-bottom: 28px;
+}
+
+.cc-logo {
+  display: inline-flex; margin-bottom: 12px;
+}
+
+.cc-logo .ic {
+  width: 48px; height: 48px; color: var(--green);
+  filter: drop-shadow(0 0 12px rgba(118, 185, 0, 0.5));
+}
+
+.config-card h1 {
+  font-family: var(--mono); font-size: 20px; font-weight: 800;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+
+.cc-sub {
+  font-size: 12px; color: var(--gray-400);
+  letter-spacing: 0.5px;
+}
+
+/* ═══ 配置区 ═══ */
+.cc-section {
+  margin-bottom: 20px;
+}
+
+.cc-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--gray-300);
+  letter-spacing: 1px; margin-bottom: 10px;
+}
+
+.cc-label .ic {
+  width: 15px; height: 15px; color: var(--green);
+}
+
+.cc-input-wrap {
+  position: relative;
+}
+
+.cc-input-wrap input {
+  width: 100%; padding: 12px 44px 12px 14px;
+  background: #000; border: 1px solid var(--gray-border);
+  border-radius: var(--radius); color: var(--green);
+  font-family: var(--mono); font-size: 13px;
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cc-input-wrap input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 8px rgba(118, 185, 0, 0.25);
+}
+
+.cc-input-wrap input::placeholder {
+  color: var(--gray-600); font-family: var(--sans); letter-spacing: 0;
+}
+
+.cc-eye {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--gray-500);
+  font-size: 16px; cursor: pointer; padding: 4px 8px;
+  transition: color 0.15s;
+}
+
+.cc-eye:hover { color: var(--green); }
+
+.cc-hint {
+  font-size: 11px; color: var(--gray-500);
+  line-height: 1.6; margin-top: 8px;
+}
+
+.cc-hint a {
+  color: var(--green); text-decoration: none;
+  border-bottom: 1px solid rgba(118, 185, 0, 0.3);
+}
+
+.cc-hint a:hover {
+  color: var(--green-bright);
+  border-bottom-color: var(--green-bright);
+}
+
+.cc-status {
+  font-family: var(--mono); font-size: 11px; margin-top: 6px;
+  min-height: 18px;
+}
+
+/* ═══ 清单 ═══ */
+.cc-checklist {
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.cc-item {
+  font-size: 12px; color: var(--gray-300);
+  padding-left: 4px;
+}
+
+/* ═══ 按钮 ═══ */
+.cc-btn {
+  width: 100%; padding: 14px;
+  background: var(--green);
+  border: none; border-radius: var(--radius);
+  color: #000; font-family: var(--sans);
+  font-size: 14px; font-weight: 700; letter-spacing: 1px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background 0.15s, opacity 0.15s;
+  margin-top: 8px;
+}
+
+.cc-btn:hover { background: var(--green-bright); }
+
+.cc-btn:disabled {
+  background: var(--gray-600); color: var(--gray-300); cursor: not-allowed;
+}
+
+.cc-btn .ic {
+  width: 16px; height: 16px;
+}
+
+.cc-error {
+  color: var(--red); font-size: 12px;
+  text-align: center; margin-top: 12px;
+  padding: 8px; background: rgba(229, 32, 32, 0.1);
+  border: 1px solid rgba(229, 32, 32, 0.3);
+  border-radius: var(--radius);
+}
+
+.hidden { display: none; }

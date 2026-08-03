@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -85,9 +86,31 @@ async def _startup() -> None:
 # 注意：端点使用同步 def（非 async def），FastAPI 会将其放入线程池执行。
 # Agent 内部用 asyncio.run() 调用 LLM，同步端点可避免
 # "asyncio.run() cannot be called from a running event loop" 错误。
-@app.get("/api/health", response_model=HealthResponse)
+@app.get("/api/health")
 def health() -> HealthResponse:
     return HealthResponse(app=settings.APP_NAME, version=settings.APP_VERSION)
+
+
+# ---- 配置管理 ----
+@app.get("/api/config")
+def get_config() -> dict:
+    """检查是否已完成配置（有 API Key）。"""
+    key = os.getenv("DEEPSEEK_API_KEY") or settings.DEEPSEEK_API_KEY or ""
+    return {"configured": bool(key and key not in ("", "your-api-key-here"))}
+
+
+@app.post("/api/config")
+def set_config(payload: dict) -> dict:
+    """保存 API Key 到 .env 文件。"""
+    api_key = (payload or {}).get("api_key", "").strip()
+    if not api_key or not api_key.startswith("sk-"):
+        return {"ok": False, "error": "Key 格式无效，应以 sk- 开头"}
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    env_path.write_text(f"DEEPSEEK_API_KEY={api_key}\n", encoding="utf-8")
+    # 重新设置环境变量
+    os.environ["DEEPSEEK_API_KEY"] = api_key
+    settings.DEEPSEEK_API_KEY = api_key
+    return {"ok": True}
 
 
 @app.get("/api/agents")
@@ -298,3 +321,7 @@ if FRONTEND_DIR.exists():
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/config")
+    async def config_page() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "config.html")

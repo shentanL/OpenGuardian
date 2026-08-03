@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenGuardian · 初始配置</title>
+  <link rel="stylesheet" href="/static/config.css">
+  <script src="/static/icons.js" defer></script>
+  <script src="/static/background.js" defer></script>
+</head>
+<body>
+<canvas id="bg-canvas" class="bg-canvas"></canvas>
+
+<div class="config-container">
+  <div class="config-card">
+    <div class="cc-header">
+      <span class="cc-logo"><svg class="ic"><use href="#ic-shield"/></svg></span>
+      <h1>OpenGuardian</h1>
+      <p class="cc-sub">AI 个人数字安全服务平台 · 首次配置</p>
+    </div>
+
+    <div class="cc-section">
+      <div class="cc-label">
+        <svg class="ic"><use href="#ic-bolt"/></svg>
+        <span>DeepSeek API Key（必填）</span>
+      </div>
+      <div class="cc-input-wrap">
+        <input id="api-key" type="password" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+               autocomplete="off" spellcheck="false">
+        <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
+      </div>
+      <div class="cc-hint">
+        如何获取？访问 <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>，
+        注册后在「API Keys」页面创建。
+        <br>Key 仅存储在你本机，不会上传到任何云端。
+      </div>
+      <div id="key-status" class="cc-status"></div>
+    </div>
+
+    <div class="cc-section">
+      <div class="cc-label">
+        <svg class="ic"><use href="#ic-check"/></svg>
+        <span>使用须知</span>
+      </div>
+      <div class="cc-checklist">
+        <div class="cc-item">✅ 所有数据存储在本地 SQLite，不会上传云端</div>
+        <div class="cc-item">✅ 源码完全开放，可自行审计安全</div>
+        <div class="cc-item">✅ 首次启动会自动拉取最新威胁情报</div>
+      </div>
+    </div>
+
+    <button id="btn-start" class="cc-btn" disabled>
+      <svg class="ic"><use href="#ic-send"/></svg>
+      <span>保存并开始使用</span>
+    </button>
+
+    <div id="cc-error" class="cc-error hidden"></div>
+  </div>
+</div>
+
+<script>
+const apiInput = document.getElementById("api-key");
+const btnStart = document.getElementById("btn-start");
+const toggleBtn = document.getElementById("toggle-key");
+const statusEl = document.getElementById("key-status");
+const errorEl = document.getElementById("cc-error");
+
+// 检查是否已有配置
+async function checkConfig() {
+  try {
+    const resp = await fetch("/api/config");
+    const data = await resp.json();
+    if (data.configured) {
+      // 已配置，直接跳转到主界面
+      window.location.href = "/";
+      return;
+    }
+    if (!btnStart) return;
+    btnStart.textContent = "等待输入 API Key…";
+  } catch (err) {
+    console.warn("配置检查失败:", err);
+  }
+}
+
+// 输入检测
+apiInput?.addEventListener("input", () => {
+  const val = apiInput.value.trim();
+  const valid = val.startsWith("sk-") && val.length >= 30;
+  btnStart.disabled = !valid;
+  btnStart.querySelector("span").textContent =
+    valid ? "保存并开始使用" : (val ? "Key 格式无效（应以 sk- 开头）" : "请输入 API Key");
+  errorEl.classList.add("hidden");
+});
+
+// 保存配置
+btnStart?.addEventListener("click", async () => {
+  const key = apiInput.value.trim();
+  if (!key.startsWith("sk-")) {
+    errorEl.textContent = "Key 格式无效，应以 sk- 开头";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+  btnStart.disabled = true;
+  btnStart.querySelector("span").textContent = "正在验证…";
+  errorEl.classList.add("hidden");
+  try {
+    const resp = await fetch("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      btnStart.querySelector("span").textContent = "配置成功，正在进入…";
+      setTimeout(() => { window.location.href = "/"; }, 600);
+    } else {
+      errorEl.textContent = data.error || "配置失败，请检查 Key 是否正确";
+      errorEl.classList.remove("hidden");
+      btnStart.disabled = false;
+      btnStart.querySelector("span").textContent = "保存并开始使用";
+    }
+  } catch (err) {
+    errorEl.textContent = "网络错误，请检查服务是否正常运行";
+    errorEl.classList.remove("hidden");
+    btnStart.disabled = false;
+  }
+});
+
+// 显示/隐藏 Key
+toggleBtn?.addEventListener("click", () => {
+  apiInput.type = apiInput.type === "password" ? "text" : "password";
+});
+
+checkConfig();
+</script>
+</body>
+</html>

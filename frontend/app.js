@@ -215,6 +215,14 @@
         } else {
           addMsg("bot", html);
         }
+        // AI 失败时显示重试按钮
+        if (finalData.reply && (finalData.reply.includes("暂时无法响应") || finalData.reply.includes("暂时无法连接"))) {
+          const retryBtn = document.createElement("button");
+          retryBtn.className = "retry-btn";
+          retryBtn.innerHTML = "🔄 重试";
+          retryBtn.onclick = () => sendMessage(text);
+          chatEl.lastElementChild?.querySelector(".bubble")?.appendChild(retryBtn);
+        }
         if (finalData.session_id) {
           currentSessionId = finalData.session_id;
           localStorage.setItem("og_session", currentSessionId);
@@ -814,6 +822,19 @@
 
   checkHealth();
   inputEl.focus();
+
+  // 获取 AI 提供商名称
+  fetch("/api/config").then(r => r.json()).then(d => {
+    const nameEl = document.getElementById("provider-name");
+    const dot = document.querySelector("#chat-status .dot");
+    if (!nameEl || !d.providers) return;
+    const cur = d.providers.find(p => p.key === (d.provider || "deepseek"));
+    if (!cur) { dot.className = "dot offline"; return; }
+    nameEl.textContent = cur.name + " · " + (d.model || cur.default_model);
+    dot.className = "dot online";
+  }).catch(() => {
+    document.querySelector("#chat-status .dot")?.classList?.replace("online", "offline");
+  });
 
   // 会话初始化：有历史会话则恢复，否则欢迎消息
   loadSessions();

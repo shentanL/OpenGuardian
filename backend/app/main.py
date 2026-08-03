@@ -230,8 +230,16 @@ async def chat_stream(req: ChatRequest):
             yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
 
         else:
-            # 检测/执行等其他意图：流式模拟处理过程
-            yield f'data: {json.dumps({"type": "token", "text": "正在分析..."}, ensure_ascii=False)}\n\n'
+            # 检测/执行等其他意图：流式展示处理阶段
+            stages = {
+                Intent.DETECT: ["🔍 正在检测进程安全...", "🌐 分析网络连接...", "📊 评估系统资源...", "🛡️ 扫描安全漏洞...", "🔐 检查账户安全..."],
+                Intent.ASSET: ["🔐 检查密码策略...", "👤 验证账户状态...", "🔑 评估安全配置..."],
+            }
+            steps = stages.get(intent, ["处理中..."])
+            for step in steps:
+                yield f'data: {json.dumps({"type": "token", "text": step + " "}, ensure_ascii=False)}\n\n'
+                await asyncio.sleep(0.15)
+
             task = AgentTask(intent=intent, params={}, user_input=req.message)
             result = await run_in_threadpool(consultant.handle, task)
             data = result.data or {}

@@ -597,3 +597,4 @@ button { -webkit-tap-highlight-color: transparent; }
   background: linear-gradient(90deg, transparent, rgba(118, 185, 0, 0.5), transparent);
   pointer-events: none;
 }
+

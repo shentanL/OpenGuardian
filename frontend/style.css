@@ -310,7 +310,7 @@ body {
 .kpi-dot.off { background: var(--green); box-shadow: 0 0 6px rgba(118, 185, 0, 0.8); }
 .kpi-dot.on { background: var(--red); box-shadow: 0 0 8px rgba(229, 32, 32, 0.9); animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: 0.4; } }
-.dash-grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--gray-border);

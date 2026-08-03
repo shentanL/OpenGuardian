@@ -202,8 +202,8 @@ async def chat_stream(req: ChatRequest):
         # 1) 先发意图事件
         yield f'data: {json.dumps({"type": "intent", "intent": intent.value}, ensure_ascii=False)}\n\n'
 
-        if intent in (Intent.CONSULT, Intent.EDUCATE):
-            # 2) 流式 LLM 输出
+        if intent == Intent.CONSULT:
+            # 咨询类：流式 LLM 输出
             system = (
                 "你是 OpenGuardian——面向普通用户的个人数字安全助手。"
                 "回答要求：通俗易懂、不超过 200 字、给出可操作建议。"
@@ -217,8 +217,8 @@ async def chat_stream(req: ChatRequest):
             reply = "".join(chunks) or "（服务暂时无法连接 AI，请稍后再试）"
             yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
         else:
-            # 3) 其他意图：完整处理后一次性返回
-            task = AgentTask(intent=Intent.CONSULT, params={}, user_input=req.message)
+            # 其他意图：完整处理后一次性返回
+            task = AgentTask(intent=intent, params={}, user_input=req.message)
             result = await run_in_threadpool(consultant.handle, task)
             data = result.data or {}
             payload = {

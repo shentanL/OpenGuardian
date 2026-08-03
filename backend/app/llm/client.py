@@ -103,8 +103,20 @@ class LLMClient:
                     return data["choices"][0]["message"]["content"]
 
         except Exception as exc:  # noqa: BLE001
-            logger.warning("LLM chat failed: %s", exc)
-            return None
+            logger.warning("LLM chat failed (attempt 1): %s", exc)
+            # 重试一次
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout + 10) as client:
+                    resp = await client.post(url, headers=headers, json=json_body)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    if self.api_format == "anthropic":
+                        content = data.get("content", [])
+                        return content[0].get("text", "") if isinstance(content, list) and content else str(content)
+                    return data["choices"][0]["message"]["content"]
+            except Exception as exc2:
+                logger.warning("LLM chat failed (attempt 2): %s", exc2)
+                return None
 
     async def chat_json(
         self,

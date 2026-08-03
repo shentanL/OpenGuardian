@@ -283,21 +283,47 @@
     const svg = document.getElementById("res-chart");
     const legendEl = document.querySelector(".legend");
     if (!samples || samples.length < 2) {
-      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#757575" font-size="12" font-family="monospace">采样中…（每 30s 自动记录）</text>`;
+      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#757575" font-size="12" font-family="monospace">采样中…（每 5s 自动记录）</text>`;
       if (legendEl) legendEl.innerHTML = `<span class="lg-cpu">CPU --%</span><span class="lg-mem">MEM --%</span><span class="lg-disk">DISK --%</span>`;
       return;
     }
-    const W = 400, H = 150, PAD = 12;
+    const W = 400, H = 150, PAD = 14;
     const n = samples.length;
     const last = samples[n - 1];
     const x = (i) => PAD + (i * (W - 2 * PAD)) / (n - 1);
     const y = (v) => H - PAD - (v / 100) * (H - 2 * PAD);
-    const path = (key) => samples.map((s, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(s[key]).toFixed(1)}`).join(" ");
-    const area = (key, color) => {
-      const p = path(key);
-      return `<polygon points="${p} ${x(n - 1).toFixed(1)},${H - PAD} ${x(0).toFixed(1)},${H - PAD}" fill="url(#grad-${color})" opacity="0.25"/>`;
+
+    // Catmull-Rom → 贝塞尔平滑曲线（ECharts smooth 风格）
+    const smoothPath = (key) => {
+      const pts = samples.map((s, i) => ({ x: x(i), y: y(s[key]) }));
+      let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2] || p2;
+        const c1x = p1.x + (p2.x - p0.x) / 6;
+        const c1y = p1.y + (p2.y - p0.y) / 6;
+        const c2x = p2.x - (p3.x - p1.x) / 6;
+        const c2y = p2.y - (p3.y - p1.y) / 6;
+        d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+      }
+      return d;
     };
-    // 网格 + 刻度
+    const areaPath = (key) => {
+      const p = smoothPath(key);
+      return `${p} L${x(n - 1).toFixed(1)},${H - PAD} L${x(0).toFixed(1)},${H - PAD} Z`;
+    };
+
+    // 统计：avg / max（Netdata 风格）
+    const stats = (key) => {
+      const vals = samples.map((s) => s[key]);
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      return { avg, max: Math.max(...vals) };
+    };
+    const stCpu = stats("cpu"), stMem = stats("mem"), stDisk = stats("disk");
+
+    // 网格 + 阈值线 + 时间刻度
     let grid = `<defs>
         <linearGradient id="grad-cpu" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#76b900"/><stop offset="100%" stop-color="#76b900" stop-opacity="0"/></linearGradient>
         <linearGradient id="grad-mem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#bff230"/><stop offset="100%" stop-color="#bff230" stop-opacity="0"/></linearGradient>
@@ -307,18 +333,78 @@
       grid += `<line x1="${PAD}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" stroke="#1f1f1f" stroke-width="1"/>`;
       grid += `<text x="${W - PAD - 2}" y="${y(g) + 4}" fill="#757575" font-size="9" font-family="monospace" text-anchor="end">${g}%</text>`;
     }
-    // 端点标记
+    // 85% 告警阈值虚线
+    grid += `<line x1="${PAD}" y1="${y(85)}" x2="${W - PAD}" y2="${y(85)}" stroke="#df6500" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>`;
+    grid += `<text x="${PAD + 2}" y="${y(85) - 3}" fill="#df6500" font-size="8" font-family="monospace" opacity="0.8">ALERT 85%</text>`;
+    // X 轴时间刻度（5 个等分）
+    const tStep = Math.max(Math.floor(n / 5), 1);
+    for (let i = 0; i < n; i += tStep) {
+      const t = (samples[i].time || "").slice(11, 19);
+      grid += `<text x="${x(i)}" y="${H - 2}" fill="#757575" font-size="8" font-family="monospace" text-anchor="middle" opacity="0.7">${t}</text>`;
+    }
+
     const dot = (key, color) => `<circle cx="${x(n - 1).toFixed(1)}" cy="${y(last[key]).toFixed(1)}" r="3" fill="#000" stroke="${color}" stroke-width="2"/>`;
     svg.innerHTML = grid +
-      area("cpu", "cpu") + area("mem", "mem") + area("disk", "disk") +
-      `<polyline points="${path("cpu")}" stroke="#76b900" stroke-width="2"/>` +
-      `<polyline points="${path("mem")}" stroke="#bff230" stroke-width="2"/>` +
-      `<polyline points="${path("disk")}" stroke="#a7a7a7" stroke-width="2"/>` +
+      `<polygon points="${areaPath("cpu")}" fill="url(#grad-cpu)" opacity="0.22"/>` +
+      `<polygon points="${areaPath("mem")}" fill="url(#grad-mem)" opacity="0.22"/>` +
+      `<polygon points="${areaPath("disk")}" fill="url(#grad-disk)" opacity="0.22"/>` +
+      `<path d="${smoothPath("cpu")}" fill="none" stroke="#76b900" stroke-width="2"/>` +
+      `<path d="${smoothPath("mem")}" fill="none" stroke="#bff230" stroke-width="2"/>` +
+      `<path d="${smoothPath("disk")}" fill="none" stroke="#a7a7a7" stroke-width="2"/>` +
       dot("cpu", "#76b900") + dot("mem", "#bff230") + dot("disk", "#a7a7a7");
-    // 图例当前值
+
+    // 图例：当前值 + 平均 + 峰值
     if (legendEl) {
-      legendEl.innerHTML = `<span class="lg-cpu">CPU ${last.cpu.toFixed(1)}%</span><span class="lg-mem">MEM ${last.mem.toFixed(1)}%</span><span class="lg-disk">DISK ${last.disk.toFixed(1)}%</span>`;
+      legendEl.innerHTML =
+        `<span class="lg-cpu">CPU ${last.cpu.toFixed(1)}% <i>avg ${stCpu.avg.toFixed(1)}% · max ${stCpu.max.toFixed(1)}%</i></span>` +
+        `<span class="lg-mem">MEM ${last.mem.toFixed(1)}% <i>avg ${stMem.avg.toFixed(1)}% · max ${stMem.max.toFixed(1)}%</i></span>` +
+        `<span class="lg-disk">DISK ${last.disk.toFixed(1)}%</span>`;
     }
+
+    // 悬停十字线 + tooltip（Grafana 风格）
+    bindChartHover(svg, samples, x, y);
+  }
+
+  // 图表悬停交互：十字线 + 数值 tooltip
+  function bindChartHover(svg, samples, x, y) {
+    const box = svg.closest(".panel");
+    if (!box) return;
+    let cross = document.getElementById("chart-cross");
+    let tip = document.getElementById("chart-tip");
+    if (!cross) {
+      cross = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      cross.id = "chart-cross";
+      cross.setAttribute("stroke", "#a7a7a7");
+      cross.setAttribute("stroke-width", "1");
+      cross.setAttribute("stroke-dasharray", "3,3");
+      cross.setAttribute("opacity", "0.7");
+      svg.appendChild(cross);
+      tip = document.createElement("div");
+      tip.id = "chart-tip";
+      tip.className = "chart-tip";
+      box.appendChild(tip);
+    }
+    const onMove = (e) => {
+      const rect = svg.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const ratio = (px - 14) / (rect.width - 28);
+      const idx = Math.round(ratio * (samples.length - 1));
+      if (idx < 0 || idx >= samples.length) { cross.setAttribute("opacity", "0"); tip.style.display = "none"; return; }
+      const s = samples[idx];
+      cross.setAttribute("x1", x(idx)); cross.setAttribute("x2", x(idx));
+      cross.setAttribute("y1", 0); cross.setAttribute("y2", 140);
+      cross.setAttribute("opacity", "0.7");
+      const t = (s.time || "").slice(11, 19);
+      tip.innerHTML = `<b>${t}</b><br>CPU <span class="tc">${s.cpu.toFixed(1)}%</span><br>MEM <span class="tm">${s.mem.toFixed(1)}%</span><br>DISK <span class="td">${s.disk.toFixed(1)}%</span>`;
+      tip.style.display = "block";
+      tip.style.left = `${px + 12}px`;
+      tip.style.top = `${e.clientY - rect.top - 8}px`;
+    };
+    svg.addEventListener("mousemove", onMove);
+    svg.addEventListener("mouseleave", () => {
+      cross.setAttribute("opacity", "0");
+      tip.style.display = "none";
+    });
   }
 
   function renderScanList(scans) {

@@ -260,11 +260,25 @@ body {
 .bar-row .val { width: 60px; text-align: right; font-family: var(--mono);
                 color: var(--white); font-weight: 700; font-size: 13px; }
 .res-chart { width: 100%; height: 160px; }
-.res-chart polyline { fill: none; stroke-width: 2; }
+.res-chart path { fill: none; stroke-width: 2; }
 .res-chart .grid-line { stroke: #1f1f1f; }
-.lg-cpu { color: var(--green); } .lg-mem { color: var(--green-bright); } .lg-disk { color: var(--gray-300); }
-.legend { display: flex; gap: 16px; margin-top: 10px; font-size: 11px;
-          font-family: var(--mono); color: var(--gray-400); }
+.lg-cpu { color: #76b900; } .lg-mem { color: #bff230; } .lg-disk { color: #a7a7a7; }
+.legend { display: flex; gap: 14px; margin-top: 10px; font-size: 11px;
+          font-family: var(--mono); color: var(--gray-400); flex-wrap: wrap; }
+.legend i { font-style: normal; color: var(--gray-500); font-size: 10px; }
+.chart-tip {
+  position: absolute; display: none; z-index: 50;
+  background: rgba(10, 10, 10, 0.95); border: 1px solid var(--green);
+  border-radius: 2px; padding: 6px 10px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.6;
+  color: var(--white); pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+.chart-tip b { color: var(--green); font-weight: 700; }
+.chart-tip .tc { color: #76b900; }
+.chart-tip .tm { color: #bff230; }
+.chart-tip .td { color: #a7a7a7; }
+.panel { position: relative; }
 .scan-list { display: flex; flex-direction: column; gap: 5px; max-height: 220px; overflow-y: auto; }
 .scan-item {
   display: flex; justify-content: space-between; align-items: center; gap: 10px;

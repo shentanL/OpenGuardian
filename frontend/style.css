@@ -246,6 +246,42 @@ body {
 .kb-ok { color: var(--green); }
 .kb-warn { color: #f5b83d; }
 .kb-dim { color: var(--gray-500); }
+/* ═══ 安全系数面板（面向小白）═══ */
+.security-panel {
+  display: flex; gap: 24px; max-width: 1100px; margin: 0 auto 14px;
+  background: var(--bg-panel); border: 1px solid var(--gray-border);
+  border-top: 2px solid var(--green); border-radius: 2px; padding: 16px 20px;
+}
+.sec-left { flex-shrink: 0; width: 210px; }
+.sec-label { font-size: 10px; color: var(--gray-400); letter-spacing: 2px; font-weight: 700; }
+.sec-score-row { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.sec-score { font-family: var(--mono); font-size: 56px; font-weight: 800; line-height: 1; color: var(--gray-300); }
+.sec-grade { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--gray-400); }
+.sec-sub { font-size: 10px; color: var(--gray-500); margin-top: 3px; }
+.sec-bar { height: 6px; background: #0a0a0a; border: 1px solid var(--gray-border); margin-top: 10px; border-radius: 1px; overflow: hidden; }
+.sec-bar-fill { height: 100%; background: var(--green); transition: width 0.8s ease, background 0.3s; }
+.sec-scale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--gray-600); margin-top: 3px; }
+.security-panel.sec-excellent .sec-score { color: var(--green); text-shadow: 0 0 16px rgba(118, 185, 0, 0.5); }
+.security-panel.sec-good .sec-score { color: #bff230; }
+.security-panel.sec-medium .sec-score { color: #f5b83d; }
+.security-panel.sec-poor .sec-score { color: #ff6b6b; text-shadow: 0 0 16px rgba(229, 32, 32, 0.5); }
+.security-panel.sec-excellent { border-top-color: var(--green); }
+.security-panel.sec-good { border-top-color: #bff230; }
+.security-panel.sec-medium { border-top-color: #ef9100; }
+.security-panel.sec-poor { border-top-color: var(--red); }
+.security-panel.sec-medium .sec-bar-fill { background: #ef9100; }
+.security-panel.sec-poor .sec-bar-fill { background: var(--red); }
+.sec-right { flex: 1; min-width: 0; }
+.sec-title { font-size: 10px; color: var(--gray-400); letter-spacing: 2px; font-weight: 700; margin-bottom: 8px; }
+.sec-suggestions { display: flex; flex-direction: column; gap: 6px; }
+.sec-sug-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; color: var(--gray-200); line-height: 1.5;
+  padding: 5px 8px; border-left: 2px solid var(--gray-border);
+  transition: border-color 0.15s, background 0.15s;
+}
+.sec-sug-item:hover { border-left-color: var(--green); background: #101010; }
+.sec-sug-item .ic { width: 13px; height: 13px; flex-shrink: 0; margin-top: 2px; color: var(--green); }
 /* ═══ KPI 卡片（Netdata 风格图标卡）═══ */
 .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; max-width: 1100px; margin: 0 auto 14px; }
 .kpi {

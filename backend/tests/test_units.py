@@ -250,6 +250,31 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn(".clickable", css)
         self.assertIn("cursor: pointer", css)
 
+    def test_security_score(self):
+        """安全系数：评分算法（扣分/等级/加固建议）。"""
+        from app.security import assess_security
+
+        # 0 风险 → 100 优
+        r0 = assess_security([])
+        self.assertEqual(r0["score"], 100)
+        self.assertEqual(r0["grade"], "excellent")
+        self.assertGreaterEqual(len(r0["suggestions"]), 4)  # 通用加固建议
+        # 1 个严重（恶意IP 命中）→ 100-20-10=70 良
+        r1 = assess_security([{"item_type": "malicious_ip", "name": "1.2.3.4:4444",
+                               "level": "critical", "detail": "黑名单命中"}])
+        self.assertEqual(r1["score"], 70)
+        self.assertEqual(r1["grade"], "good")
+        self.assertTrue(any("恶意地址" in s["text"] for s in r1["suggestions"]))
+        # 多个风险 → 更低
+        r2 = assess_security([
+            {"item_type": "process", "name": "xmrig.exe", "level": "high", "pid": 123},
+            {"item_type": "process", "name": "miner.exe", "level": "medium"},
+            {"item_type": "port", "name": "端口 4444", "level": "high"},
+        ])
+        self.assertEqual(r2["score"], 100 - 15 - 10 - 15)
+        self.assertEqual(r2["grade"], "medium")
+        self.assertTrue(any("任务管理器" in s["text"] for s in r2["suggestions"]))
+
 
 class TestIntentRules(unittest.TestCase):
     """意图识别规则：疑问句优先 + 各意图确定性分类（曾误判 consult→detect/educate）。"""

@@ -506,6 +506,35 @@
     time.textContent = `最近检测 ${t}`;
   }
 
+  function renderSecurity(sec) {
+    if (!sec || sec.score === undefined) return;
+    const scoreEl = document.getElementById("sec-score");
+    const gradeEl = document.getElementById("sec-grade");
+    const subEl = document.getElementById("sec-sub");
+    const barEl = document.getElementById("sec-bar-fill");
+    const sugEl = document.getElementById("sec-suggestions");
+    if (!scoreEl) return;
+    scoreEl.textContent = sec.score;
+    gradeEl.textContent = sec.label;
+    const grade = sec.grade || "medium";
+    const panel = document.querySelector(".security-panel");
+    panel.className = "security-panel sec-" + grade;
+    if (barEl) barEl.style.width = sec.score + "%";
+    const tip = sec.risk_count > 0
+      ? `发现 ${sec.risk_count} 项风险${sec.threat_hits ? ` · ${sec.threat_hits} 项威胁情报命中` : ""}`
+      : "当前状态良好，坚持以下习惯更安心";
+    if (subEl) subEl.textContent = tip;
+    if (sugEl) {
+      const ICONS = { process: "ic-term", port: "ic-net", asset: "ic-lock", network: "ic-net",
+                      malicious_ip: "ic-alert", malicious_domain: "ic-alert", resource: "ic-gauge",
+                      update: "ic-bolt", firewall: "ic-shield", password: "ic-lock",
+                      phishing: "ic-alert", backup: "ic-check" };
+      sugEl.innerHTML = (sec.suggestions || []).map((s) =>
+        `<div class="sec-sug-item">${ic(ICONS[s.icon] || "ic-check")}<span>${escapeHtml(s.text)}</span></div>`
+      ).join("") || `<div class="sec-sug-item">暂无建议</div>`;
+    }
+  }
+
   function renderKbStatus(kb) {
     const el = document.getElementById("kb-text");
     if (!el) return;
@@ -582,6 +611,7 @@
       const dist = data.risk_distribution || {};
       renderStatusBanner(data);
       renderKbStatus(data.kb_status);
+      renderSecurity(data.security);
       renderRiskBars(Object.assign({}, dist, { last_risks: data.last_risks || [] }));
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);

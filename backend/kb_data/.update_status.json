@@ -1,15 +1,15 @@
 {
   "sources": {
     "urlhaus": {
-      "total": 462,
-      "updated": "2026-08-03 14:39:40",
+      "total": 579,
+      "updated": "2026-08-03 14:46:06",
       "ok": true
     },
     "firehol": {
       "total": 19346,
-      "updated": "2026-08-03 14:39:40",
+      "updated": "2026-08-03 14:46:06",
       "ok": true
     }
   },
-  "last_update": "2026-08-03 14:39:40"
+  "last_update": "2026-08-03 14:46:06"
 }

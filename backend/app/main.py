@@ -17,6 +17,7 @@ from .config import settings
 from .db import get_db
 from .kb.updater import kb_stats, start_background_update
 from .sampler import ResourceSampler
+from .security import assess_security
 from .schemas import (
     AgentTask,
     ChatRequest,
@@ -272,6 +273,7 @@ def stats() -> dict:
         "scans": scans_all[:10],
         "audit_count": len(db.get_audit(limit=1000)),
         "kb_status": kb_stats(),  # 知识库主动汲取状态
+        "security": assess_security(latest.get("risks", []) if latest else None),  # 安全系数+加固方案
     }
 
 

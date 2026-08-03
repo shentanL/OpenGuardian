@@ -56,6 +56,8 @@ MALWARE_PATTERNS: list[tuple[str, str, str, RiskLevel]] = [
     ("rat.exe", "远控木马", "允许黑客远程控制你的电脑", RiskLevel.CRITICAL),
     ("backdoor", "后门程序", "黑客预留的远程入侵通道", RiskLevel.CRITICAL),
     ("hacktool", "黑客工具", "可能被恶意利用的黑客工具", RiskLevel.HIGH),
+    ("netcat", "Netcat 网络工具", "黑客常用网络工具，可用于反弹 shell/端口扫描", RiskLevel.HIGH),
+    ("ncat", "Ncat 网络工具", "Nmap 版 netcat，黑客常用反弹 shell 工具", RiskLevel.HIGH),
     ("cobaltstrike", "Cobalt Strike", "红队渗透工具，常被黑客用来控制服务器", RiskLevel.CRITICAL),
     ("mimikatz", "Mimikatz", "窃取 Windows 密码哈希的工具，常被木马携带", RiskLevel.CRITICAL),
 

@@ -38,6 +38,8 @@ INTENT_SYSTEM_PROMPT = """你是 OpenGuardian 的意图识别器。根据用户�
 
 # 关键词降级规则（LLM 不可用时）。顺序敏感：高特异性意图在前。
 KEYWORD_RULES: list[tuple[Intent, list[str]]] = [
+    # 疑问句式优先：咨询类问题不能被检测词（木马/病毒/进程）抢走
+    (Intent.CONSULT, ["什么是", "啥是", "什么叫", "解释一下", "介绍一下", "介绍下", "是什么", "有哪些", "怎么办", "如何防范", "怎么防范"]),
     (Intent.EXECUTE, ["结束", "关闭进程", "杀掉", "终止", "干掉", "退出进程"]),
     (Intent.DETECT, ["检测", "扫描", "查一下", "查杀", "体检", "风险", "木马", "病毒", "进程", "安全吗"]),
     (Intent.ASSET, ["密码", "账号安全", "隐私", "泄露", "弱密码", "强密码"]),
@@ -124,6 +126,9 @@ class ConsultantAgent(BaseAgent):
     @staticmethod
     def _keyword_classify(text: str) -> Intent | None:
         """关键词规则分类；未命中返回 None（交给 LLM 或默认 consult）。"""
+        # 0) 疑问句式最优先：咨询类问题不能被教育话题/检测词抢走
+        if any(k in text for k in ("什么是", "是什么", "啥是", "啥叫", "什么叫")):
+            return Intent.CONSULT
         # 1) 具体教育话题精确匹配
         for topic in EDU_TOPICS:
             if topic in text:
@@ -132,9 +137,6 @@ class ConsultantAgent(BaseAgent):
         for intent, keywords in KEYWORD_RULES:
             if any(k in text for k in keywords):
                 return intent
-        # 3) "什么是X"类提问 → 咨询
-        if any(k in text for k in ("什么是", "是什么", "啥是", "啥叫")):
-            return Intent.CONSULT
         return None
 
     # ---- 各意图处理 ----

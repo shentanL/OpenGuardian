@@ -803,6 +803,15 @@
     }
   }
 
+  // 侧边栏折叠
+  const sidebarEl = document.getElementById("sidebar");
+  const toggleEl = document.getElementById("sidebar-toggle");
+  toggleEl?.addEventListener("click", () => {
+    sidebarEl?.classList.toggle("collapsed");
+    localStorage.setItem("og_sidebar_collapsed", sidebarEl?.classList.contains("collapsed") ? "1" : "0");
+  });
+  if (localStorage.getItem("og_sidebar_collapsed") === "1") sidebarEl?.classList.add("collapsed");
+
   checkHealth();
   inputEl.focus();
 

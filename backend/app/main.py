@@ -298,6 +298,9 @@ def stats() -> dict:
             if lv in levels:
                 levels[lv] += 1
             ty = str(r.get("item_type", "process")).lower()
+            # 子类型归一化: vuln_patch → vuln, malicious_domain → malicious_domain 等
+            if ty.startswith("vuln"):
+                ty = "vuln"
             if ty in types:
                 types[ty] += 1
 

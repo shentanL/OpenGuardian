@@ -46,10 +46,11 @@ class LLMClient:
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
     ) -> Optional[str]:
-        """普通对话，返回文本。失败返回 None。"""
+        """普通对话，返回文本。失败返回 None。支持 OpenAI/Anthropic/Gemini 格式。"""
         if not self.available:
-            logger.warning("LLM not configured: DEEPSEEK_API_KEY missing")
+            logger.warning("LLM not configured: API key missing")
             return None
+
         payload_messages: list[dict] = []
         if system:
             payload_messages.append({"role": "system", "content": system})
@@ -57,19 +58,54 @@ class LLMClient:
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(
-                    self.chat_url,
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    json={
-                        "model": self.model,
-                        "messages": payload_messages,
-                        "temperature": temperature,
-                        "max_tokens": max_tokens or settings.LLM_MAX_TOKENS,
-                    },
-                )
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+                json_body: dict = {
+                    "model": self.model,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens or settings.LLM_MAX_TOKENS,
+                }
+                url = self.chat_url
+
+                # 格式适配
+                if self.api_format == "anthropic":
+                    headers = {
+                        "x-api-key": self.api_key,
+                        "anthropic-version": "2023-06-01",
+                    }
+                    url = f"{self.base_url.rstrip('/')}/v1/messages"
+                    # Anthropic 用 system 字段（不是 role:system 的消息）
+                    sys_text = None
+                    filtered_msgs = []
+                    for m in payload_messages:
+                        if m["role"] == "system":
+                            sys_text = m["content"]
+                        else:
+                            filtered_msgs.append(m)
+                    json_body["system"] = sys_text or ""
+                    json_body["messages"] = filtered_msgs
+                elif self.api_format == "gemini":
+                    # Gemini 用 x-goog-api-key
+                    headers = {"x-goog-api-key": self.api_key}
+                    json_body["messages"] = payload_messages
+                else:
+                    # OpenAI 兼容格式
+                    json_body["messages"] = payload_messages
+
+                resp = await client.post(url, headers=headers, json=json_body)
                 resp.raise_for_status()
                 data = resp.json()
-                return data["choices"][0]["message"]["content"]
+
+                # 响应解析
+                if self.api_format == "anthropic":
+                    # Anthropic: content[0].text
+                    content = data.get("content", [])
+                    if isinstance(content, list) and content:
+                        return content[0].get("text", "")
+                    return str(content)
+                else:
+                    # OpenAI 兼容: choices[0].message.content
+                    return data["choices"][0]["message"]["content"]
+
         except Exception as exc:  # noqa: BLE001
             logger.warning("LLM chat failed: %s", exc)
             return None

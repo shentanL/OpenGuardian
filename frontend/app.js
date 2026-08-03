@@ -12,7 +12,6 @@
   const confirmOk = document.getElementById("confirm-ok");
   const confirmCancel = document.getElementById("confirm-cancel");
 
-  let sessionId = "";
   let pendingExecute = null;
 
   const LEVEL_CLASS = { critical: "critical", high: "high", medium: "medium", low: "low" };
@@ -110,7 +109,7 @@
       const resp = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, session_id: sessionId }),
+        body: JSON.stringify({ message: text, session_id: currentSessionId }),
       });
       if (!resp.ok) throw new Error("HTTP " + resp.status);
       if (!resp.body) throw new Error("无响应体");
@@ -169,7 +168,13 @@
         } else {
           addMsg("bot", html);
         }
-        sessionId = finalData.session_id || sessionId;
+        if (finalData.session_id) {
+          currentSessionId = finalData.session_id;
+          localStorage.setItem("og_session", currentSessionId);
+          if (!sessionMeta[currentSessionId]) sessionMeta[currentSessionId] = { title: "" };
+          if (!sessionMeta[currentSessionId].title) sessionMeta[currentSessionId].title = text.slice(0, 18);
+          loadSessions();
+        }
 
         if (finalData.needs_confirmation && finalData.execute_hint) {
           const { pid } = finalData.execute_hint;
@@ -278,6 +283,93 @@
     }
   }
 
+  /* ---- 会话管理 ---- */
+  const sessionListEl = document.getElementById("session-list");
+  const newSessionBtn = document.getElementById("new-session");
+  let currentSessionId = localStorage.getItem("og_session") || "";
+
+  async function loadSessions() {
+    try {
+      const resp = await fetch("/api/sessions");
+      const data = await resp.json();
+      const sessions = data.sessions || [];
+      sessionListEl.innerHTML = sessions.length
+        ? sessions.map((s) => {
+            const title = sessionTitle(s.id) || s.id.slice(0, 10);
+            return `<div class="session-item ${s.id === currentSessionId ? "active" : ""}" data-id="${s.id}">
+              <span class="s-title">${escapeHtml(title)}</span>
+              <button class="s-del" data-del="${s.id}" title="删除会话">✕</button>
+            </div>`;
+          }).join("")
+        : `<div style="color:#757575;font-size:11px;padding:8px">暂无会话</div>`;
+    } catch { /* 静默 */ }
+  }
+
+  function sessionTitle(id) {
+    // 从当前已加载的消息里取第一条用户消息作为标题
+    const meta = sessionMeta[id];
+    return meta ? meta.title : "";
+  }
+
+  const sessionMeta = {}; // id -> {title}
+
+  async function switchSession(id) {
+    if (!id) return;
+    currentSessionId = id;
+    localStorage.setItem("og_session", id);
+    chatEl.innerHTML = "";
+    try {
+      const resp = await fetch(`/api/sessions/${id}/messages`);
+      const data = await resp.json();
+      const messages = data.messages || [];
+      sessionMeta[id] = { title: "" };
+      messages.forEach((m) => {
+        if (m.role === "user" && !sessionMeta[id].title) {
+          sessionMeta[id].title = m.content.slice(0, 18);
+        }
+        addMsg(m.role === "user" ? "user" : "bot", escapeHtml(m.content).replace(/\n/g, "<br>"));
+      });
+      if (!messages.length) addWelcome();
+    } catch (err) {
+      addMsg("bot", "⚠️ 加载会话失败：" + escapeHtml(err.message));
+    }
+    loadSessions();
+  }
+
+  function newSession() {
+    currentSessionId = "";
+    localStorage.removeItem("og_session");
+    chatEl.innerHTML = "";
+    addWelcome();
+    loadSessions();
+  }
+
+  function addWelcome() {
+    addMsg("bot",
+      "你好！我是 OpenGuardian，你的 AI 个人数字安全助手。<br><br>" +
+      "你可以对我说：<br>" +
+      "· <b>「帮我检测一下电脑」</b> — 扫描进程/网络/资源风险<br>" +
+      "· <b>「什么是钓鱼邮件？」</b> — 安全知识咨询<br>" +
+      "· <b>「检查密码 123456」</b> — 密码强度评估<br>" +
+      "· <b>「讲讲勒索病毒」</b> — 安全案例科普");
+  }
+
+  sessionListEl.addEventListener("click", (e) => {
+    const delBtn = e.target.closest(".s-del");
+    if (delBtn) {
+      e.stopPropagation();
+      const id = delBtn.dataset.del;
+      fetch(`/api/sessions/${id}`, { method: "DELETE" }).then(() => {
+        if (id === currentSessionId) newSession();
+        else loadSessions();
+      });
+      return;
+    }
+    const item = e.target.closest(".session-item");
+    if (item) switchSession(item.dataset.id);
+  });
+  newSessionBtn.addEventListener("click", newSession);
+
   /* ---- 健康检查 ---- */
   async function checkHealth() {
     try {
@@ -296,12 +388,11 @@
   checkHealth();
   inputEl.focus();
 
-  // 欢迎消息
-  addMsg("bot",
-    "你好！我是 OpenGuardian，你的 AI 个人数字安全助手。<br><br>" +
-    "你可以对我说：<br>" +
-    "· <b>「帮我检测一下电脑」</b> — 扫描进程/网络/资源风险<br>" +
-    "· <b>「什么是钓鱼邮件？」</b> — 安全知识咨询<br>" +
-    "· <b>「检查密码 123456」</b> — 密码强度评估<br>" +
-    "· <b>「讲讲勒索病毒」</b> — 安全案例科普");
+  // 会话初始化：有历史会话则恢复，否则欢迎消息
+  loadSessions();
+  if (currentSessionId) {
+    switchSession(currentSessionId);
+  } else {
+    addWelcome();
+  }
 })();

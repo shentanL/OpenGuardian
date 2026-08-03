@@ -197,6 +197,19 @@ def sessions_list() -> dict:
     return {"sessions": db.list_sessions()}
 
 
+@app.get("/api/sessions/{session_id}/messages")
+def session_messages(session_id: str) -> dict:
+    """读取指定会话的完整消息历史（供前端切换会话时回显）。"""
+    return {"session_id": session_id, "messages": db.load_session(session_id)}
+
+
+@app.delete("/api/sessions/{session_id}")
+def session_delete(session_id: str) -> dict:
+    """删除会话（前端侧边栏管理）。"""
+    deleted = db.delete_session(session_id)
+    return {"success": deleted, "session_id": session_id}
+
+
 @app.get("/api/scans")
 def scans() -> dict:
     return {"history": db.get_scan_history()}

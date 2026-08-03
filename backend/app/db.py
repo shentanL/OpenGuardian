@@ -136,6 +136,11 @@ class Database:
         )
         return [{"id": r[0], "updated_at": r[1]} for r in rows]
 
+    def delete_session(self, session_id: str) -> bool:
+        """删除会话及其消息。返回是否删除成功。"""
+        cur = self._execute("DELETE FROM sessions WHERE id=?", (session_id,))
+        return cur is not None and cur.rowcount > 0
+
     # ---- 审计日志 ----
     def add_audit(self, action: str, pid: int | None, name: str, result: str) -> None:
         entry = {"time": _now(), "action": action, "pid": pid, "name": name, "result": result}

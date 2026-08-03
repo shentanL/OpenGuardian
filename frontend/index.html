@@ -8,6 +8,13 @@
 </head>
 <body>
 <div class="app">
+  <aside class="sidebar">
+    <button id="new-session" class="new-session">＋ 新建会话</button>
+    <div id="session-list" class="session-list"></div>
+    <div class="sidebar-foot">SESSIONS · SQLite</div>
+  </aside>
+
+  <div class="main-col">
   <header class="topbar">
     <div class="logo"><span class="shield">⬢</span>OpenGuardian<span class="ver">v0.1.0</span></div>
     <div class="tabs">
@@ -22,20 +29,20 @@
   <main id="dashboard" class="dashboard hidden">
     <div class="dash-grid">
       <div class="panel">
-        <h3>🔴 风险分布</h3>
+        <h3>风险分布</h3>
         <div id="risk-bars" class="risk-bars"></div>
       </div>
       <div class="panel">
-        <h3>📈 资源趋势（最近检测）</h3>
+        <h3>资源趋势（最近检测）</h3>
         <svg id="res-chart" viewBox="0 0 400 160" class="res-chart"></svg>
         <div class="legend">
-          <span class="lg-cpu">— CPU</span>
-          <span class="lg-mem">— 内存</span>
-          <span class="lg-disk">— 磁盘</span>
+          <span class="lg-cpu">CPU</span>
+          <span class="lg-mem">MEM</span>
+          <span class="lg-disk">DISK</span>
         </div>
       </div>
       <div class="panel span2">
-        <h3>🕐 检测历史</h3>
+        <h3>检测历史</h3>
         <div id="scan-list" class="scan-list"></div>
       </div>
     </div>
@@ -45,6 +52,7 @@
     <input id="input" type="text" placeholder="输入你的问题…（Enter 发送）" autocomplete="off">
     <button id="send">发送</button>
   </footer>
+  </div>
 </div>
 
 <!-- 处置确认弹窗 -->

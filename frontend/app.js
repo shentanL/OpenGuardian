@@ -287,13 +287,16 @@
         <span class="risk-name">${escapeHtml(name)}</span>
         <span class="risk-desc">${escapeHtml(desc)}</span></div>`;
     }).join("");
-    const emptyDetail = `<div class="dist-empty">最近 10 次检测 0 风险，系统状态干净</div>`;
+    // 按需显示：0 风险时不渲染空条形（累计/级别/类别），仅简洁空状态
+    if ((dist.total || 0) === 0) {
+      el.innerHTML = `<div class="dist-empty">最近检测 0 风险，系统状态干净</div>`;
+      return;
+    }
     el.innerHTML = `
       ${lvRows ? `<div class="dist-group">按级别</div>${lvRows}` : ""}
       ${typeRows ? `<div class="dist-group">按类别</div>${typeRows}` : ""}
       ${bar("total", "累计", "bar-total", dist.total || 0)}
-      <div class="dist-group">最近风险明细</div>
-      ${detailRows || emptyDetail}`;
+      ${detailRows ? `<div class="dist-group">最近风险明细</div>${detailRows}` : ""}`;
   }
 
   function renderResChart(samples) {
@@ -370,12 +373,12 @@
       `<path d="${smoothPath("disk")}" fill="none" stroke="#a7a7a7" stroke-width="2"/>` +
       dot("cpu", "#76b900") + dot("mem", "#bff230") + dot("disk", "#a7a7a7");
 
-    // 图例：当前值 + 平均 + 峰值
+    // 图例：色点 + 当前值大字 + avg/max 次要统计（Netdata 风格）
     if (legendEl) {
       legendEl.innerHTML =
-        `<span class="lg-cpu">CPU ${last.cpu.toFixed(1)}% <i>avg ${stCpu.avg.toFixed(1)}% · max ${stCpu.max.toFixed(1)}%</i></span>` +
-        `<span class="lg-mem">MEM ${last.mem.toFixed(1)}% <i>avg ${stMem.avg.toFixed(1)}% · max ${stMem.max.toFixed(1)}%</i></span>` +
-        `<span class="lg-disk">DISK ${last.disk.toFixed(1)}%</span>`;
+        `<span class="lg lg-cpu" data-k="cpu"><i class="sw sw-cpu"></i>CPU <b>${last.cpu.toFixed(1)}%</b><em>avg ${stCpu.avg.toFixed(1)}% · max ${stCpu.max.toFixed(1)}%</em></span>` +
+        `<span class="lg lg-mem" data-k="mem"><i class="sw sw-mem"></i>MEM <b>${last.mem.toFixed(1)}%</b><em>avg ${stMem.avg.toFixed(1)}% · max ${stMem.max.toFixed(1)}%</em></span>` +
+        `<span class="lg lg-disk" data-k="disk"><i class="sw sw-disk"></i>DISK <b>${last.disk.toFixed(1)}%</b><em>avg ${stDisk.avg.toFixed(1)}% · max ${stDisk.max.toFixed(1)}%</em></span>`;
     }
 
     // 悬停十字线 + tooltip（Grafana 风格）
@@ -416,11 +419,24 @@
       tip.style.display = "block";
       tip.style.left = `${px + 12}px`;
       tip.style.top = `${e.clientY - rect.top - 8}px`;
+      // 图例联动：悬停值高亮
+      document.querySelectorAll(".legend .lg").forEach((el) => {
+        const k = el.dataset.k;
+        const b = el.querySelector("b");
+        if (b && k && s[k] !== undefined) { b.textContent = `${s[k].toFixed(1)}%`; el.classList.add("active"); }
+      });
     };
     svg.addEventListener("mousemove", onMove);
     svg.addEventListener("mouseleave", () => {
       cross.setAttribute("opacity", "0");
       tip.style.display = "none";
+      // 图例恢复最新值
+      const lastS = samples[samples.length - 1];
+      document.querySelectorAll(".legend .lg").forEach((el) => {
+        const k = el.dataset.k;
+        const b = el.querySelector("b");
+        if (b && k && lastS[k] !== undefined) { b.textContent = `${lastS[k].toFixed(1)}%`; el.classList.remove("active"); }
+      });
     });
   }
 

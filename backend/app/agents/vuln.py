@@ -139,10 +139,88 @@ def _scan_shares() -> VulnItem | None:
     return None
 
 
+def _scan_autoruns() -> VulnItem | None:
+    """启动项检测：注册表 Run 键 + 启动文件夹。"""
+    import os
+
+    suspicious: list[str] = []
+    # 注册表自启动键（HKCU 和 HKLM）
+    run_keys = [
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+    ]
+    for hkey, path in run_keys:
+        try:
+            with winreg.OpenKey(hkey, path) as key:
+                i = 0
+                while True:
+                    try:
+                        name, value, _ = winreg.EnumValue(key, i)
+                        low_name = str(name).lower()
+                        low_val = str(value).lower()
+                        # 白名单：安全软件和系统自带
+                        if any(safe in low_val for safe in
+                               ("windows defender", "securityhealth", "onedrive", "dropbox",
+                                "skype", "teams", "slack", "steam", "epic", "discord",
+                                "chrome", "firefox", "edge", "office", "adobe")):
+                            i += 1
+                            continue
+                        if any(bad in low_val + low_name for bad in
+                               ("svch0st", "expl0rer", "rundll", "temp\\", "\\appdata\\local\\temp",
+                                "powershell -enc", "wscript", "cscript", ".vbs", ".bat", ".ps1",
+                                "startup", "crack", "keygen", "loader", "activator")):
+                            suspicious.append(f"启动项「{name}」→ {value[:60]}")
+                        i += 1
+                    except OSError:
+                        break
+        except OSError:
+            pass
+
+    # 启动文件夹
+    for env in ("APPDATA", "PROGRAMDATA"):
+        try:
+            startup_dir = Path(os.environ.get(env, "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+            if startup_dir.exists():
+                for f in startup_dir.iterdir():
+                    if f.suffix.lower() in (".lnk", ".exe", ".bat", ".cmd", ".vbs", ".ps1"):
+                        suspicious.append(f"启动文件夹 → {f.name}")
+        except Exception:  # noqa: BLE001
+            pass
+
+    if suspicious:
+        return VulnItem("vuln_autorun", "发现可疑启动项", f"检测到 {len(suspicious)} 个可疑自启动项：{'; '.join(suspicious[:3])}。恶意软件常通过自启动实现持久化",
+                        "high", "打开任务管理器 → 启动 选项卡，禁用可疑项；或运行 msconfig 检查启动配置")
+    return None
+
+
+def _scan_hosts() -> VulnItem | None:
+    """HOSTS 文件劫持检测。"""
+    hosts_path = Path("C:/Windows/System32/drivers/etc/hosts")
+    try:
+        content = hosts_path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:  # noqa: BLE001
+        return None
+    hijack: list[str] = []
+    for ln in content.splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith("#"):
+            continue
+        parts = ln.split()
+        if len(parts) >= 2:
+            ip = parts[0]
+            if ip not in ("127.0.0.1", "0.0.0.0", "::1"):
+                hijack.append(ln)
+    if hijack:
+        return VulnItem("vuln_hosts", "HOSTS 文件被篡改", f"检测到 {len(hijack)} 条非标准 HOSTS 映射：{'; '.join(hijack[:3])}。DNS 劫持常用于钓鱼和屏蔽安全网站",
+                        "critical", "以管理员身份打开 C:\\Windows\\System32\\drivers\\etc\\hosts，删除可疑行后保存")
+    return None
+
+
 def scan_vulnerabilities() -> list[VulnItem]:
     """执行全部漏洞检测，返回发现的风险项（0 风险返回空列表）。"""
     items: list[VulnItem] = []
-    scanners = [_scan_patches, _scan_smb1, _scan_firewall, _scan_guest, _scan_uac, _scan_shares]
+    scanners = [_scan_patches, _scan_smb1, _scan_firewall, _scan_guest, _scan_uac, _scan_shares,
+                _scan_autoruns, _scan_hosts]
     for fn in scanners:
         try:
             item = fn()

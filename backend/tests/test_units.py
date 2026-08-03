@@ -298,7 +298,8 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn("_scan_firewall", vuln)   # 防火墙
         self.assertIn("_scan_guest", vuln)      # Guest 账户
         self.assertIn("_scan_uac", vuln)        # UAC
-        self.assertIn("_scan_patches", vuln)    # 系统补丁
+        self.assertIn("_scan_autoruns", vuln)   # 启动项
+        self.assertIn("_scan_hosts", vuln)      # HOSTS 劫持
         main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
         self.assertIn('"vuln": 0', main)        # 类别统计
         # 安全评分：漏洞风险走 vuln 建议分支

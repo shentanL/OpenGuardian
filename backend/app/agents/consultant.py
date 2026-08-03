@@ -69,7 +69,7 @@ class ConsultantAgent(BaseAgent):
         logger.info("Intent classified: %s (input=%r)", intent.value, user_input[:50])
 
         if intent == Intent.CONSULT:
-            reply = self._handle_consult(user_input)
+            reply = self._handle_consult(user_input, context=task.params.get("context", ""))
             return AgentResult(agent=self.name, success=True, message=reply, data={"intent": intent.value})
 
         if intent == Intent.DETECT:
@@ -140,9 +140,9 @@ class ConsultantAgent(BaseAgent):
         return None
 
     # ---- 各意图处理 ----
-    def _handle_consult(self, user_input: str) -> str:
+    def _handle_consult(self, user_input: str, context: str = "") -> str:
         # 咨询类：直接 LLM 对话（降级给固定引导）
-        reply = self._llm_chat(user_input)
+        reply = self._llm_chat(user_input, context=context)
         if reply:
             return reply
         return (
@@ -238,15 +238,25 @@ class ConsultantAgent(BaseAgent):
         )
 
     # ---- 工具方法 ----
-    def _llm_chat(self, user_input: str) -> Optional[str]:
+    def _llm_chat(self, user_input: str, context: str = "") -> Optional[str]:
         import asyncio
+
+        msg = user_input
+        if context:
+            msg = f"{context}\n\n{msg}"
 
         async def _run() -> Optional[str]:
             return await self.llm.chat(
-                [{"role": "user", "content": user_input}],
+                [{"role": "user", "content": msg}],
                 system=(
-                    "你是 OpenGuardian——面向普通用户的个人数字安全助手。"
-                    "回答要求：通俗易懂、不超过 200 字、给出可操作建议。"
+                    "你是 OpenGuardian，一个面向普通用户的个人数字安全助手。"
+                    "你的用户不一定是技术专家——可能是学生、上班族、父母。"
+                    "回答规范："
+                    "1）用口语化中文，避免术语堆砌；用到术语时必须立刻用()白话解释"
+                    "2）控制在 3-6 句话内，每句话独立成段，方便阅读"
+                    "3）结尾给出 1-2 条可操作建议（用户照着做就有效）"
+                    "4）语气真诚、像朋友在帮忙，不说套话（禁止「作为 AI」「请注意」「综上所述」这类 AI 模板用语）"
+                    "5）涉及具体操作时写出路径/按钮名称（如「打开 Windows 设置→更新和安全→检查更新」）"
                 ),
                 temperature=0.7,
             )

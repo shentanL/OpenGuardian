@@ -101,9 +101,21 @@ def chat(req: ChatRequest) -> ChatResponse:
     history = _get_history(session_id)
     history.append({"role": "user", "content": req.message})
 
+    # 注入最近一次检测上下文（让 LLM 回答安全问题时引用检测结果）
+    context = ""
+    try:
+        scans = db.get_scan_history(limit=1)
+        if scans and scans[0].get("total", 0) > 0:
+            s = scans[0]
+            context = f"[最近一次检测结果：发现 {s.get('total', 0)} 项风险（高危 {s.get('high', 0)} 项）；{s.get('summary', '')[:80]}]"
+        elif scans:
+            context = "[最近一次检测结果：未发现明显风险]"
+    except Exception:  # noqa: BLE001
+        pass
+
     task = AgentTask(
         intent=Intent.CONSULT,
-        params={},
+        params={"context": context},
         user_input=req.message,
     )
     result = consultant.handle(task)

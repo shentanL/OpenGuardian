@@ -5,6 +5,7 @@
 import os
 import sys
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -193,6 +194,38 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(len(hist), 1)
         self.assertEqual(hist[0]["total"], 3)
         self.assertEqual(hist[0]["high"], 1)
+
+
+class TestUIFrontend(unittest.TestCase):
+    """前端 UI-v5 变更验证（粒子背景 + 5s 采样 + canvas 层级）。"""
+
+    def test_background_js_particle_logic(self):
+        bg = (Path(__file__).resolve().parent.parent.parent / "frontend" / "background.js").read_text(encoding="utf-8")
+        for feature in ("LINK_DIST", "MOUSE_DIST", "MAX_PARTICLES", "requestAnimationFrame", "visibilitychange", "118,185,0"):
+            self.assertIn(feature, bg, f"background.js 缺 {feature}")
+
+    def test_background_js_syntax(self):
+        import subprocess
+
+        bg = Path(__file__).resolve().parent.parent.parent / "frontend" / "background.js"
+        node = r"C:\Users\14845\AppData\Local\hermes\node\node.exe"
+        r = subprocess.run([node, "--check", "background.js"], capture_output=True, text=True, cwd=bg.parent)
+        self.assertEqual(r.returncode, 0, r.stderr[:100])
+
+    def test_index_has_canvas_and_bg(self):
+        html = (Path(__file__).resolve().parent.parent.parent / "frontend" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="bg-canvas"', html)
+        self.assertIn("background.js", html)
+
+    def test_css_bg_layer(self):
+        css = (Path(__file__).resolve().parent.parent.parent / "frontend" / "style.css").read_text(encoding="utf-8")
+        self.assertIn(".bg-canvas", css)
+        self.assertIn("pointer-events: none", css)
+        self.assertEqual(css.count("{"), css.count("}"))
+
+    def test_sampler_interval_5s(self):
+        main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
+        self.assertIn("interval=5", main)
 
 
 class TestBlacklists(unittest.TestCase):

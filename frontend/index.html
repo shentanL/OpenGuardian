@@ -10,19 +10,33 @@
 <div class="app">
   <header class="topbar">
     <div class="logo">🛡️ OpenGuardian</div>
+    <div class="tabs">
+      <button id="tab-chat" class="tab active">💬 安全助手</button>
+      <button id="tab-dash" class="tab">📊 安全仪表盘</button>
+    </div>
     <div class="status"><span class="dot"></span><span id="status-text">连接中…</span></div>
   </header>
 
-  <main id="chat" class="chat">
-    <div class="msg bot">
-      <div class="avatar">🛡️</div>
-      <div class="bubble">
-        你好！我是 OpenGuardian，你的 AI 个人数字安全助手。<br><br>
-        你可以对我说：<br>
-        · <b>「帮我检测一下电脑」</b> — 扫描进程/网络/资源风险<br>
-        · <b>「什么是钓鱼邮件？」</b> — 安全知识咨询<br>
-        · <b>「检查密码 123456」</b> — 密码强度评估<br>
-        · <b>「讲讲勒索病毒」</b> — 安全案例科普
+  <main id="chat" class="chat"></main>
+
+  <main id="dashboard" class="dashboard hidden">
+    <div class="dash-grid">
+      <div class="panel">
+        <h3>🔴 风险分布</h3>
+        <div id="risk-bars" class="risk-bars"></div>
+      </div>
+      <div class="panel">
+        <h3>📈 资源趋势（最近检测）</h3>
+        <svg id="res-chart" viewBox="0 0 400 160" class="res-chart"></svg>
+        <div class="legend">
+          <span class="lg-cpu">— CPU</span>
+          <span class="lg-mem">— 内存</span>
+          <span class="lg-disk">— 磁盘</span>
+        </div>
+      </div>
+      <div class="panel span2">
+        <h3>🕐 检测历史</h3>
+        <div id="scan-list" class="scan-list"></div>
       </div>
     </div>
   </main>

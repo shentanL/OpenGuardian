@@ -51,6 +51,13 @@ CREATE TABLE IF NOT EXISTS scan_history (
     high_risks  INTEGER NOT NULL DEFAULT 0,
     summary     TEXT
 );
+CREATE TABLE IF NOT EXISTS resource_history (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    time TEXT NOT NULL,
+    cpu  REAL NOT NULL,
+    mem  REAL NOT NULL,
+    disk REAL NOT NULL
+);
 """
 
 
@@ -183,6 +190,24 @@ class Database:
         )
         return [
             {"time": r[0], "total": r[1], "high": r[2], "summary": r[3]} for r in rows
+        ]
+
+    # ---- 资源历史 ----
+    def add_resource_sample(self, cpu: float, mem: float, disk: float) -> None:
+        self._execute(
+            "INSERT INTO resource_history(time, cpu, mem, disk) VALUES(?,?,?,?)",
+            (_now(), round(cpu, 1), round(mem, 1), round(disk, 1)),
+        )
+
+    def get_resource_history(self, limit: int = 30) -> list[dict]:
+        rows = self._query(
+            "SELECT time, cpu, mem, disk FROM resource_history "
+            "ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        return [
+            {"time": r[0], "cpu": r[1], "mem": r[2], "disk": r[3]}
+            for r in reversed(rows)  # 正序返回（旧→新）
         ]
 
 

@@ -195,6 +195,89 @@
     if (e.key === "Enter") send();
   });
 
+  /* ---- 仪表盘 ---- */
+  const chatMain = document.getElementById("chat");
+  const dashMain = document.getElementById("dashboard");
+  const tabChat = document.getElementById("tab-chat");
+  const tabDash = document.getElementById("tab-dash");
+
+  function switchTab(showDash) {
+    chatMain.classList.toggle("hidden", showDash);
+    dashMain.classList.toggle("hidden", !showDash);
+    tabChat.classList.toggle("active", !showDash);
+    tabDash.classList.toggle("active", showDash);
+    if (showDash) loadDashboard();
+  }
+  tabChat.addEventListener("click", () => switchTab(false));
+  tabDash.addEventListener("click", () => switchTab(true));
+
+  function renderRiskBars(dist) {
+    const el = document.getElementById("risk-bars");
+    const total = Math.max(dist.total || 0, 1);
+    const high = dist.high || 0;
+    const other = dist.other || 0;
+    const pct = (v) => Math.round((v / total) * 100);
+    el.innerHTML = `
+      <div class="bar-row"><span class="lbl">🔴 高危</span>
+        <div class="bar-track"><div class="bar-fill high" style="width:${pct(high)}%"></div></div>
+        <span class="val">${high}</span></div>
+      <div class="bar-row"><span class="lbl">🟡 其他</span>
+        <div class="bar-track"><div class="bar-fill other" style="width:${pct(other)}%"></div></div>
+        <span class="val">${other}</span></div>
+      <div class="bar-row"><span class="lbl">📊 累计</span>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:#334155"></div></div>
+        <span class="val">${dist.total || 0}</span></div>`;
+  }
+
+  function renderResChart(samples) {
+    const svg = document.getElementById("res-chart");
+    if (!samples || samples.length < 2) {
+      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#64748b" font-size="13">运行检测后显示趋势图</text>`;
+      return;
+    }
+    const W = 400, H = 150, PAD = 10;
+    const n = samples.length;
+    const x = (i) => PAD + (i * (W - 2 * PAD)) / (n - 1);
+    const y = (v) => H - PAD - (v / 100) * (H - 2 * PAD);
+    const path = (key) => samples.map((s, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(s[key]).toFixed(1)}`).join(" ");
+    // 网格线（0/50/100%）
+    let grid = "";
+    for (const g of [0, 50, 100]) {
+      grid += `<line x1="${PAD}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" stroke="#1e293b" stroke-width="1"/>`;
+      grid += `<text x="${W - PAD - 2}" y="${y(g) + 4}" fill="#475569" font-size="9" text-anchor="end">${g}%</text>`;
+    }
+    svg.innerHTML = grid +
+      `<polyline points="${path("cpu")}" stroke="#38bdf8"/>` +
+      `<polyline points="${path("mem")}" stroke="#a78bfa"/>` +
+      `<polyline points="${path("disk")}" stroke="#34d399"/>`;
+  }
+
+  function renderScanList(scans) {
+    const el = document.getElementById("scan-list");
+    if (!scans || !scans.length) {
+      el.innerHTML = `<div class="scan-item">暂无检测记录 — 在助手页说「帮我检测一下电脑」</div>`;
+      return;
+    }
+    el.innerHTML = scans.map((s) => {
+      const cls = s.high > 0 ? "crit" : s.total > 0 ? "warn" : "ok";
+      const lbl = s.high > 0 ? `${s.high} 高危` : s.total > 0 ? `${s.total} 项` : "安全";
+      const time = (s.time || "").replace("T", " ").slice(5, 16);
+      return `<div class="scan-item"><span>${time}</span><span>${escapeHtml((s.summary || "").slice(0, 40))}</span><span class="badge ${cls}">${lbl}</span></div>`;
+    }).join("");
+  }
+
+  async function loadDashboard() {
+    try {
+      const resp = await fetch("/api/stats");
+      const data = await resp.json();
+      renderRiskBars(data.risk_distribution || {});
+      renderResChart(data.resources || []);
+      renderScanList(data.scans || []);
+    } catch (err) {
+      document.getElementById("risk-bars").innerHTML = `<div style="color:#f87171">加载失败：${escapeHtml(err.message)}</div>`;
+    }
+  }
+
   /* ---- 健康检查 ---- */
   async function checkHealth() {
     try {
@@ -212,4 +295,13 @@
 
   checkHealth();
   inputEl.focus();
+
+  // 欢迎消息
+  addMsg("bot",
+    "你好！我是 OpenGuardian，你的 AI 个人数字安全助手。<br><br>" +
+    "你可以对我说：<br>" +
+    "· <b>「帮我检测一下电脑」</b> — 扫描进程/网络/资源风险<br>" +
+    "· <b>「什么是钓鱼邮件？」</b> — 安全知识咨询<br>" +
+    "· <b>「检查密码 123456」</b> — 密码强度评估<br>" +
+    "· <b>「讲讲勒索病毒」</b> — 安全案例科普");
 })();

@@ -91,7 +91,7 @@ def chat(req: ChatRequest) -> ChatResponse:
     db.save_session(session_id, history)
 
     data = result.data or {}
-    # 检测类请求写入扫描历史（供报告/运维统计）
+    # 检测类请求写入扫描历史 + 资源快照（供报告/仪表盘）
     if data.get("intent") == "detect":
         risks = result.risks
         db.add_scan(
@@ -99,6 +99,16 @@ def chat(req: ChatRequest) -> ChatResponse:
             high_risks=sum(1 for r in risks if r.level in (RiskLevel.HIGH, RiskLevel.CRITICAL)),
             summary=result.message[:200],
         )
+        try:
+            import psutil
+
+            db.add_resource_sample(
+                psutil.cpu_percent(interval=0.2),
+                psutil.virtual_memory().percent,
+                psutil.disk_usage("/").percent,
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     return ChatResponse(
         reply=result.message,
@@ -190,6 +200,26 @@ def sessions_list() -> dict:
 @app.get("/api/scans")
 def scans() -> dict:
     return {"history": db.get_scan_history()}
+
+
+@app.get("/api/stats")
+def stats() -> dict:
+    """仪表盘聚合数据：风险分布 + 资源趋势 + 检测历史。"""
+    scans_all = db.get_scan_history(limit=200)
+    # 风险分布（按级别统计，从 scan_history 无法细分，用最近一次检测的 summary 简化）
+    # —— 更准确的分布来自各次检测 risks；MVP 统计 high/total 比值
+    high_total = sum(s["high"] for s in scans_all)
+    total = sum(s["total"] for s in scans_all)
+    return {
+        "risk_distribution": {
+            "high": high_total,
+            "other": max(total - high_total, 0),
+            "total": total,
+        },
+        "resources": db.get_resource_history(limit=30),
+        "scans": scans_all[:10],
+        "audit_count": len(db.get_audit(limit=1000)),
+    }
 
 
 # ---- 前端静态托管 ----

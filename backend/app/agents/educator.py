@@ -214,25 +214,88 @@ class EducatorAgent(BaseAgent):
     def _ask_llm(self, llm, topic: str) -> str:
         import asyncio
 
+        # RAG：从知识库检索相关内容作为上下文
+        context = self._rag_search(topic)
+
         async def _run() -> str | None:
+            prompt = (
+                f"请用通俗易懂的方式科普「{topic}」相关的数字安全知识。\n"
+                f"包括：是什么、常见套路、如何防护。控制在 250 字以内。\n"
+            )
+            if context:
+                prompt += f"\n\n以下是与「{topic}」相关的知识库内容，请参考（不要直接复制）：\n{context}"
+
             return await llm.chat(
-                [
-                    {
-                        "role": "user",
-                        "content": (
-                            f"请用通俗易懂的方式科普「{topic}」相关的数字安全知识，"
-                            "包括：是什么、常见套路、如何防护。控制在 200 字以内。"
-                        ),
-                    }
-                ],
-                system="你是 OpenGuardian 的安全教育老师，面向普通用户，语言要通俗、有场景感。",
+                [{"role": "user", "content": prompt}],
+                system="你是 OpenGuardian 的安全教育专家。用真实知识库内容回答，不编造。引用具体术语时给出白话解释。",
             )
 
         try:
             result = asyncio.run(_run())
             return result or self._generic(topic)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return self._generic(topic)
+
+    @staticmethod
+    def _rag_search(topic: str) -> str:
+        """RAG 检索：从 120 术语 + 30 案例中搜索与 topic 相关的内容。"""
+        from ..kb.glossary import GLOSSARY
+
+        results = []
+
+        # 1. 搜索术语库（120 条）
+        for key, entry in GLOSSARY.items():
+            # 检查 topic 与术语 key 或 plain 解释的重叠
+            if _word_overlap(topic, key) > 0.3 or _word_overlap(topic, entry.get("plain", "")) > 0.2:
+                item = f"【术语】{key.split('|')[0]}: {entry.get('plain', '')}"
+                if entry.get("advice"):
+                    item += f" 防护：{entry['advice']}"
+                results.append(item)
+
+        # 2. 搜索案例库（30 条）
+        for key, case in CASES.items():
+            if _word_overlap(topic, key) > 0.2 or _word_overlap(topic, case.get("explain", "")) > 0.1:
+                item = f"【案例】{key}: {case.get('explain', '')[:100]}"
+                results.append(item)
+
+        # 3. 去重 + 取 Top 3
+        seen = set()
+        top = []
+        for r in results:
+            if r[:30] not in seen:
+                seen.add(r[:30])
+                top.append(r)
+            if len(top) >= 3:
+                break
+
+        return "\n".join(top) if top else ""
+
+
+def _word_overlap(a: str, b: str) -> float:
+    """中文字级重叠度（bigram + 单字）。支持 勒索→勒索病毒, 零日→零日攻击。"""
+    if not a or not b:
+        return 0.0
+    a, b = a.lower(), b.lower()
+
+    # 1. 完整包含（子串匹配）
+    if a in b or b in a:
+        return 0.8
+
+    # 2. Bigram 重叠
+    def bigrams(s):
+        return {s[i:i+2] for i in range(len(s)-1)}
+    bi_a, bi_b = bigrams(a), bigrams(b)
+    if bi_a and bi_b:
+        overlap = len(bi_a & bi_b) / min(len(bi_a), len(bi_b))
+        if overlap > 0:
+            return overlap * 0.7
+
+    # 3. 单字重叠（fallback）
+    chars_a, chars_b = set(a.replace(" ", "")), set(b.replace(" ", ""))
+    if chars_a and chars_b:
+        return len(chars_a & chars_b) / min(len(chars_a), len(chars_b)) * 0.3
+
+    return 0.0
 
     @staticmethod
     def _generic(topic: str) -> str:

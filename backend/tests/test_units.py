@@ -228,6 +228,48 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn("interval=5", main)
 
 
+class TestIntentRules(unittest.TestCase):
+    """意图识别规则：疑问句优先 + 各意图确定性分类（曾误判 consult→detect/educate）。"""
+
+    CASES = {
+        "什么是木马？": Intent.CONSULT,
+        "什么是钓鱼邮件？": Intent.CONSULT,
+        "解释一下什么是病毒": Intent.CONSULT,
+        "帮我检测一下电脑": Intent.DETECT,
+        "检查密码 123456": Intent.ASSET,
+        "讲讲勒索病毒": Intent.EDUCATE,
+        "讲讲钓鱼邮件": Intent.EDUCATE,
+        "结束进程 123": Intent.EXECUTE,
+    }
+
+    def test_keyword_classify_all_intents(self):
+        for text, want in self.CASES.items():
+            got = ConsultantAgent._keyword_classify(text)
+            self.assertEqual(got, want, f"{text!r} → {got}，期望 {want}")
+
+    def test_question_first_overrides_detect_keywords(self):
+        """疑问句式最优先：'什么是木马？' 不能被 DETECT 的 '木马' 抢走。"""
+        self.assertIs(ConsultantAgent._keyword_classify("什么是木马？"), Intent.CONSULT)
+        self.assertIs(ConsultantAgent._keyword_classify("什么是钓鱼邮件？"), Intent.CONSULT)
+
+
+class TestDetectorPatterns(unittest.TestCase):
+    """特征库：黑客工具命中 + 正常程序零误报（曾漏报 netcat/ncat）。"""
+
+    def test_hack_tools_hit(self):
+        for name in ("netcat.exe", "ncat.exe"):
+            self.assertIsNotNone(_match_pattern(name, rf"C:\tmp\{name}"), f"{name} 应命中")
+
+    def test_legit_programs_no_false_positive(self):
+        for name in ("chrome.exe", "explorer.exe", "notepad.exe"):
+            self.assertIsNone(_match_pattern(name, rf"C:\Program Files\{name}"), f"{name} 不应误报")
+
+    def test_netcat_in_patterns(self):
+        names = {p[0] for p in MALWARE_PATTERNS}
+        self.assertIn("netcat", names)
+        self.assertIn("ncat", names)
+
+
 class TestBlacklists(unittest.TestCase):
     def test_domain_hit(self):
         from app.kb.blacklists import is_malicious_domain

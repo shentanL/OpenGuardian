@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenGuardian · AI 数字安全助手</title>
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenGuardian · AI 数字安全平台</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/icons.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    <button id="new-session" class="new-session">＋ 新建会话</button>
+    <button id="new-session" class="new-session"><svg class="ic"><use href="#ic-plus"/></svg>新建会话</button>
     <div id="session-list" class="session-list"></div>
-    <div class="sidebar-foot">SESSIONS · SQLite</div>
+    <div class="sidebar-foot"><span id="sys-clock">--:--:--</span> · SESSIONS</div>
   </aside>
 
   <div class="main-col">
@@ -27,6 +29,12 @@
   <main id="chat" class="chat"></main>
 
   <main id="dashboard" class="dashboard hidden">
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">高危风险</div><div class="kpi-value" id="kpi-high">0</div></div>
+      <div class="kpi"><div class="kpi-label">检测项</div><div class="kpi-value" id="kpi-total">0</div></div>
+      <div class="kpi"><div class="kpi-label">处置审计</div><div class="kpi-value" id="kpi-audit">0</div></div>
+      <div class="kpi"><div class="kpi-label">检测次数</div><div class="kpi-value" id="kpi-scans">0</div></div>
+    </div>
     <div class="dash-grid">
       <div class="panel">
         <h3>风险分布</h3>

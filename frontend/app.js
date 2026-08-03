@@ -2,6 +2,26 @@
 (function () {
   "use strict";
 
+  // 注入 SVG 图标库（icons.js 定义的 ICONS sprite）
+  document.body.insertAdjacentHTML("afterbegin", ICONS);
+
+  // tab / 按钮图标
+  const tabChatEl = document.getElementById("tab-chat");
+  const tabDashEl = document.getElementById("tab-dash");
+  if (tabChatEl) tabChatEl.innerHTML = ic("ic-chat") + "安全助手";
+  if (tabDashEl) tabDashEl.innerHTML = ic("ic-gauge") + "监控台";
+  const sendBtnEl = document.getElementById("send");
+  if (sendBtnEl) sendBtnEl.innerHTML = "发送 " + ic("ic-send");
+
+  // 系统时钟（等宽）
+  const clockEl = document.getElementById("sys-clock");
+  if (clockEl) {
+    setInterval(() => {
+      const d = new Date();
+      clockEl.textContent = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+    }, 1000);
+  }
+
   const chatEl = document.getElementById("chat");
   const inputEl = document.getElementById("input");
   const sendBtn = document.getElementById("send");
@@ -15,7 +35,7 @@
   let pendingExecute = null;
 
   const LEVEL_CLASS = { critical: "critical", high: "high", medium: "medium", low: "low" };
-  const LEVEL_ICON = { critical: "🔴", high: "🟠", medium: "🟡", low: "🟢" };
+  const LEVEL_ICON = { critical: "ic-bolt", high: "ic-alert", medium: "ic-alert", low: "ic-check" };
 
   /* ---- 工具 ---- */
   function addMsg(role, html) {
@@ -48,13 +68,13 @@
     let html = "";
     for (const r of risks) {
       const cls = LEVEL_CLASS[r.level] || "low";
-      const icon = LEVEL_ICON[r.level] || "⚪";
+      const icon = LEVEL_ICON[r.level] ? ic(LEVEL_ICON[r.level], `lv-${cls}`) : "⚪";
       html += `
         <div class="risk-card ${cls}">
           <div class="r-name">${icon} ${escapeHtml(r.name)}</div>
           <div class="r-detail">${escapeHtml(r.detail)}</div>
-          ${r.suggestion ? `<div class="r-suggest">💡 ${escapeHtml(r.suggestion)}</div>` : ""}
-          ${r.pid ? `<button class="btn-term" data-pid="${r.pid}" data-name="${escapeHtml(r.name)}">🛑 结束该进程（PID ${r.pid}）</button>` : ""}
+          ${r.suggestion ? `<div class="r-suggest">${ic("ic-shield")} ${escapeHtml(r.suggestion)}</div>` : ""}
+          ${r.pid ? `<button class="btn-term" data-pid="${r.pid}" data-name="${escapeHtml(r.name)}">${ic("ic-bolt")} 结束该进程（PID ${r.pid}）</button>` : ""}
         </div>`;
     }
     return html;
@@ -278,6 +298,13 @@
       renderRiskBars(data.risk_distribution || {});
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);
+      // KPI 卡片
+      const dist = data.risk_distribution || {};
+      const setKpi = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setKpi("kpi-high", dist.high || 0);
+      setKpi("kpi-total", dist.total || 0);
+      setKpi("kpi-audit", data.audit_count || 0);
+      setKpi("kpi-scans", (data.scans || []).length);
     } catch (err) {
       document.getElementById("risk-bars").innerHTML = `<div style="color:#f87171">加载失败：${escapeHtml(err.message)}</div>`;
     }
@@ -297,7 +324,7 @@
         ? sessions.map((s) => {
             const title = sessionTitle(s.id) || s.id.slice(0, 10);
             return `<div class="session-item ${s.id === currentSessionId ? "active" : ""}" data-id="${s.id}">
-              <span class="s-title">${escapeHtml(title)}</span>
+              ${ic("ic-chat")}<span class="s-title">${escapeHtml(title)}</span>
               <button class="s-del" data-del="${s.id}" title="删除会话">✕</button>
             </div>`;
           }).join("")

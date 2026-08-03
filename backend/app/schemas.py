@@ -64,7 +64,7 @@ class ChatRequest(BaseModel):
 class ExecuteRequest(BaseModel):
     """处置确认请求。"""
 
-    pid: int = Field(..., description="目标进程 PID")
+    pid: Optional[int] = Field(None, description="目标进程 PID（缺省时返回友好提示）")
     action: str = Field("terminate", description="处置动作")
 
 

@@ -9,8 +9,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# 项目根目录
-BASE = Path(__file__).resolve().parent
+# 项目根目录（spec 文件即在此目录）
+BASE = Path(SPECPATH)
 BACKEND = BASE / "backend"
 FRONTEND = BASE / "frontend"
 KB_DATA = BACKEND / "kb_data"

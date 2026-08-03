@@ -66,7 +66,7 @@ class LLMClient:
                 }
                 url = self.chat_url
 
-                # 格式适配
+                # 格式适配（仅 Anthropic 需特殊处理）
                 if self.api_format == "anthropic":
                     headers = {
                         "x-api-key": self.api_key,
@@ -83,12 +83,8 @@ class LLMClient:
                             filtered_msgs.append(m)
                     json_body["system"] = sys_text or ""
                     json_body["messages"] = filtered_msgs
-                elif self.api_format == "gemini":
-                    # Gemini 用 x-goog-api-key
-                    headers = {"x-goog-api-key": self.api_key}
-                    json_body["messages"] = payload_messages
                 else:
-                    # OpenAI 兼容格式
+                    # OpenAI 兼容格式（默认）
                     json_body["messages"] = payload_messages
 
                 resp = await client.post(url, headers=headers, json=json_body)

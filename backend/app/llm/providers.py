@@ -95,7 +95,7 @@ PROVIDERS: dict[str, dict] = {
         "format": "openai",
         "description": "讯飞星火大模型（OpenAI 兼容端点）",
     },
-    # ═══ 🌍 国际 ═══
+    # ═══ 🌍 国际主流 ═══
     "openai": {
         "name": "OpenAI（ChatGPT）",
         "base_url": "https://api.openai.com/v1",
@@ -104,6 +104,14 @@ PROVIDERS: dict[str, dict] = {
         "format": "openai",
         "description": "OpenAI 官方。gpt-4o-mini 性价比最高",
     },
+    "gemini": {
+        "name": "Google Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "models": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+        "default_model": "gemini-2.5-flash",
+        "format": "openai",
+        "description": "Google Gemini。免费额度 1500次/天",
+    },
     "anthropic": {
         "name": "Anthropic Claude",
         "base_url": "https://api.anthropic.com/v1",
@@ -111,6 +119,46 @@ PROVIDERS: dict[str, dict] = {
         "default_model": "claude-sonnet-4-20250514",
         "format": "anthropic",
         "description": "Anthropic 官方 Claude 系列",
+    },
+    "mistral": {
+        "name": "Mistral AI",
+        "base_url": "https://api.mistral.ai/v1",
+        "models": ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest", "codestral-latest"],
+        "default_model": "mistral-small-latest",
+        "format": "openai",
+        "description": "法国 Mistral AI。开源友好",
+    },
+    "xai": {
+        "name": "xAI Grok（马斯克）",
+        "base_url": "https://api.x.ai/v1",
+        "models": ["grok-2", "grok-2-vision", "grok-beta"],
+        "default_model": "grok-2",
+        "format": "openai",
+        "description": "xAI 的 Grok 系列",
+    },
+    "together": {
+        "name": "Together AI",
+        "base_url": "https://api.together.xyz/v1",
+        "models": ["meta-llama/Llama-3.3-70B-Instruct-Turbo", "Qwen/Qwen2.5-72B-Instruct-Turbo", "deepseek-ai/DeepSeek-V3"],
+        "default_model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "format": "openai",
+        "description": "Together AI。可按量付费跑开源模型",
+    },
+    "perplexity": {
+        "name": "Perplexity",
+        "base_url": "https://api.perplexity.ai",
+        "models": ["sonar-pro", "sonar", "sonar-reasoning"],
+        "default_model": "sonar",
+        "format": "openai",
+        "description": "Perplexity AI。支持联网搜索",
+    },
+    "cohere": {
+        "name": "Cohere",
+        "base_url": "https://api.cohere.ai/v1",
+        "models": ["command-r-plus", "command-r", "command"],
+        "default_model": "command-r",
+        "format": "openai",
+        "description": "Cohere。企业级 RAG 优化",
     },
     # ═══ 本地 / 自定义 ═══
     "ollama": {

@@ -742,8 +742,8 @@
     const qs = [
       { icon: "ic-scan", text: "帮我检测一下电脑" },
       { icon: "ic-book", text: "什么是钓鱼邮件？" },
-      { icon: "ic-lock", text: "检查密码 123456" },
       { icon: "ic-shield", text: "讲讲勒索病毒" },
+      { icon: "ic-lock", text: "如何设置强密码" },
     ];
     const cards = qs.map((q) =>
       `<button class="wcard" data-q="${escapeHtml(q.text)}"><span class="wcard-ic">${ic(q.icon)}</span>${escapeHtml(q.text)}</button>`

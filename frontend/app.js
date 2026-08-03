@@ -231,9 +231,18 @@
     dashMain.classList.toggle("hidden", !showDash);
     tabChat.classList.toggle("active", !showDash);
     tabDash.classList.toggle("active", showDash);
-    if (showDash) loadDashboard();
+    if (showDash) {
+      loadDashboard();
+      if (!window._dashTimer) {
+        window._dashTimer = setInterval(loadDashboard, 10000); // 每 10s 自动刷新
+      }
+    }
   }
-  tabChat.addEventListener("click", () => switchTab(false));
+  // 离开监控台时停止刷新
+  function stopDashRefresh() {
+    if (window._dashTimer) { clearInterval(window._dashTimer); window._dashTimer = null; }
+  }
+  tabChat.addEventListener("click", () => { switchTab(false); stopDashRefresh(); });
   tabDash.addEventListener("click", () => switchTab(true));
 
   function renderRiskBars(dist) {
@@ -272,25 +281,44 @@
 
   function renderResChart(samples) {
     const svg = document.getElementById("res-chart");
+    const legendEl = document.querySelector(".legend");
     if (!samples || samples.length < 2) {
-      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#64748b" font-size="13">运行检测后显示趋势图</text>`;
+      svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#757575" font-size="12" font-family="monospace">采样中…（每 30s 自动记录）</text>`;
+      if (legendEl) legendEl.innerHTML = `<span class="lg-cpu">CPU --%</span><span class="lg-mem">MEM --%</span><span class="lg-disk">DISK --%</span>`;
       return;
     }
-    const W = 400, H = 150, PAD = 10;
+    const W = 400, H = 150, PAD = 12;
     const n = samples.length;
+    const last = samples[n - 1];
     const x = (i) => PAD + (i * (W - 2 * PAD)) / (n - 1);
     const y = (v) => H - PAD - (v / 100) * (H - 2 * PAD);
     const path = (key) => samples.map((s, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(s[key]).toFixed(1)}`).join(" ");
-    // 网格线（0/50/100%）
-    let grid = "";
+    const area = (key, color) => {
+      const p = path(key);
+      return `<polygon points="${p} ${x(n - 1).toFixed(1)},${H - PAD} ${x(0).toFixed(1)},${H - PAD}" fill="url(#grad-${color})" opacity="0.25"/>`;
+    };
+    // 网格 + 刻度
+    let grid = `<defs>
+        <linearGradient id="grad-cpu" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#76b900"/><stop offset="100%" stop-color="#76b900" stop-opacity="0"/></linearGradient>
+        <linearGradient id="grad-mem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#bff230"/><stop offset="100%" stop-color="#bff230" stop-opacity="0"/></linearGradient>
+        <linearGradient id="grad-disk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a7a7a7"/><stop offset="100%" stop-color="#a7a7a7" stop-opacity="0"/></linearGradient>
+      </defs>`;
     for (const g of [0, 50, 100]) {
-      grid += `<line x1="${PAD}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" stroke="#1e293b" stroke-width="1"/>`;
-      grid += `<text x="${W - PAD - 2}" y="${y(g) + 4}" fill="#475569" font-size="9" text-anchor="end">${g}%</text>`;
+      grid += `<line x1="${PAD}" y1="${y(g)}" x2="${W - PAD}" y2="${y(g)}" stroke="#1f1f1f" stroke-width="1"/>`;
+      grid += `<text x="${W - PAD - 2}" y="${y(g) + 4}" fill="#757575" font-size="9" font-family="monospace" text-anchor="end">${g}%</text>`;
     }
+    // 端点标记
+    const dot = (key, color) => `<circle cx="${x(n - 1).toFixed(1)}" cy="${y(last[key]).toFixed(1)}" r="3" fill="#000" stroke="${color}" stroke-width="2"/>`;
     svg.innerHTML = grid +
-      `<polyline points="${path("cpu")}" stroke="#38bdf8"/>` +
-      `<polyline points="${path("mem")}" stroke="#a78bfa"/>` +
-      `<polyline points="${path("disk")}" stroke="#34d399"/>`;
+      area("cpu", "cpu") + area("mem", "mem") + area("disk", "disk") +
+      `<polyline points="${path("cpu")}" stroke="#76b900" stroke-width="2"/>` +
+      `<polyline points="${path("mem")}" stroke="#bff230" stroke-width="2"/>` +
+      `<polyline points="${path("disk")}" stroke="#a7a7a7" stroke-width="2"/>` +
+      dot("cpu", "#76b900") + dot("mem", "#bff230") + dot("disk", "#a7a7a7");
+    // 图例当前值
+    if (legendEl) {
+      legendEl.innerHTML = `<span class="lg-cpu">CPU ${last.cpu.toFixed(1)}%</span><span class="lg-mem">MEM ${last.mem.toFixed(1)}%</span><span class="lg-disk">DISK ${last.disk.toFixed(1)}%</span>`;
+    }
   }
 
   function renderScanList(scans) {

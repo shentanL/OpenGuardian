@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,7 @@ from pathlib import Path
 from .agents import build_bus, build_consultant
 from .config import settings
 from .db import get_db
+from .sampler import ResourceSampler
 from .schemas import (
     AgentTask,
     ChatRequest,
@@ -27,7 +29,23 @@ from .schemas import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
+_sampler: ResourceSampler | None = None
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """服务生命周期：启动资源采样器，关闭时停止。"""
+    global _sampler
+    _sampler = ResourceSampler(get_db(), interval=30)
+    _sampler.start()
+    try:
+        yield
+    finally:
+        if _sampler:
+            _sampler.stop()
+
+
+app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

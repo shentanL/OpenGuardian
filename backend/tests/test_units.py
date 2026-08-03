@@ -114,6 +114,63 @@ class TestConsultant(unittest.TestCase):
         self.assertIsNone(self.consultant._extract_pid("帮我检测电脑"))
 
 
+class TestDatabase(unittest.TestCase):
+    """SQLite 持久化层测试（独立临时库，不污染产品库）。"""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+
+        from app.db import Database
+
+        self._tmp = Path(tempfile.gettempdir()) / "hv-unit-test.db"
+        self._tmp.unlink(missing_ok=True)
+        self.db = Database(self._tmp)
+
+    def tearDown(self):
+        if self.db._conn:
+            self.db._conn.close()
+        import time
+
+        for _ in range(5):
+            try:
+                self._tmp.unlink()
+                break
+            except PermissionError:
+                time.sleep(0.3)
+
+    def test_session_roundtrip(self):
+        self.db.save_session("s1", [{"role": "user", "content": "hi"}])
+        loaded = self.db.load_session("s1")
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["content"], "hi")
+        # 覆盖更新
+        self.db.save_session("s1", [{"role": "user", "content": "hi"}, {"role": "user", "content": "again"}])
+        self.assertEqual(len(self.db.load_session("s1")), 2)
+        self.assertEqual(self.db.list_sessions()[0]["id"], "s1")
+
+    def test_audit_log(self):
+        self.db.add_audit("terminate", 123, "x.exe", "ok")
+        self.db.add_audit("terminate(force)", 456, "y.exe", "ok")
+        logs = self.db.get_audit()
+        self.assertEqual(len(logs), 2)
+        self.assertEqual(logs[0]["action"], "terminate(force)")  # 倒序
+
+    def test_whitelist_crud(self):
+        self.assertTrue(self.db.add_whitelist("myapp.exe"))
+        self.assertIn("myapp.exe", self.db.get_whitelist())
+        self.assertFalse(self.db.add_whitelist("myapp.exe"))  # 去重
+        self.assertTrue(self.db.remove_whitelist("myapp.exe"))
+        self.assertNotIn("myapp.exe", self.db.get_whitelist())
+
+    def test_scan_history(self):
+        self.db.add_scan(3, 1, "检测完成")
+        hist = self.db.get_scan_history()
+        self.assertEqual(len(hist), 1)
+        self.assertEqual(hist[0]["total"], 3)
+        self.assertEqual(hist[0]["high"], 1)
+
+
 class TestBlacklists(unittest.TestCase):
     def test_domain_hit(self):
         from app.kb.blacklists import is_malicious_domain

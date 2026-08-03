@@ -286,6 +286,19 @@ class DetectorAgent(BaseAgent):
                             host = socket.gethostbyaddr(r_ip)[0]
                         except Exception:  # noqa: BLE001
                             host = r_ip
+                        # 黑名单命中：恶意 IP / 恶意域名
+                        from ..kb.blacklists import is_malicious_domain, is_malicious_ip
+
+                        if is_malicious_ip(r_ip) or is_malicious_domain(host):
+                            risks.append(RiskItem(
+                                item_type="network",
+                                name=f"{r_ip}:{rport}",
+                                detail=f"连接到黑名单中的恶意地址 {host}:{rport}",
+                                level=RiskLevel.HIGH,
+                                suggestion="该地址在威胁情报黑名单中，立即断网并查杀！",
+                                pid=conn.pid,
+                            ))
+                            continue
                         risks.append(RiskItem(
                             item_type="network",
                             name=f"{r_ip}:{rport}",

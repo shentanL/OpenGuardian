@@ -112,6 +112,27 @@ class TestConsultant(unittest.TestCase):
         self.assertIsNone(self.consultant._extract_pid("帮我检测电脑"))
 
 
+class TestBlacklists(unittest.TestCase):
+    def test_domain_hit(self):
+        from app.kb.blacklists import is_malicious_domain
+
+        # URLhaus 真实恶意域名
+        self.assertTrue(is_malicious_domain("0022a601.pphost.net"))
+        self.assertFalse(is_malicious_domain("google.com"))
+
+    def test_domain_subdomain_match(self):
+        from app.kb.blacklists import is_malicious_domain
+
+        self.assertTrue(is_malicious_domain("evil.sub.0022a601.pphost.net"))
+
+    def test_ip_query_runs(self):
+        from app.kb.blacklists import is_malicious_ip
+
+        # 正常 IP 不应命中（黑名单主要是威胁情报段）
+        self.assertFalse(is_malicious_ip("8.8.8.8"))
+        self.assertFalse(is_malicious_ip("1.1.1.1"))
+
+
 class TestGlossary(unittest.TestCase):
     def test_library_size(self):
         self.assertGreaterEqual(len(GLOSSARY), 40, "术语库应 ≥40 主条目")

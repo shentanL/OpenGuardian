@@ -1,8 +1,8 @@
-"""分析 Agent：数字资产防护（MVP 简化版）。
+"""分析 Agent：数字资产防护。
 
 能力：
 1. 密码强度评估（长度/字符集/常见弱密码）
-2. 常见弱密码库检查（从 kb_data/passwords.txt 加载，1479+ 条）
+2. 百万级弱密码库检查（Pwdb Top-1000000 + 中文弱密码库）
 3. 提供加固建议
 """
 from __future__ import annotations
@@ -24,30 +24,38 @@ _FALLBACK_WEAK = {
     "000000", "123456789", "666666", "88888888", "a123456",
 }
 
-_PW_FILE = Path(__file__).resolve().parent.parent.parent / "kb_data" / "passwords.txt"
+# 弱密码数据文件（按优先级合并加载）
+_KB_DIR = Path(__file__).resolve().parent.parent.parent / "kb_data"
+_PW_FILES = [
+    _KB_DIR / "pwdb1m.txt",      # Pwdb 百万弱密码榜（主库）
+    _KB_DIR / "passwords.txt",   # 中文弱密码 Top 1000 等（补充）
+]
 
 _weak_cache: set[str] | None = None
 
 
 def _load_weak_passwords() -> set[str]:
-    """加载弱密码库（带缓存）；数据文件缺失时回退内置集。"""
+    """加载百万级弱密码库（懒加载+缓存）；数据文件缺失时回退内置集。"""
     global _weak_cache
     if _weak_cache is not None:
         return _weak_cache
-    try:
-        if _PW_FILE.exists():
-            with open(_PW_FILE, encoding="utf-8") as f:
-                _weak_cache = {
-                    line.strip() for line in f
-                    if line.strip() and not line.startswith("#")
-                }
-            logger.info("弱密码库加载: %d 条（%s）", len(_weak_cache), _PW_FILE.name)
-        else:
-            _weak_cache = set(_FALLBACK_WEAK)
-            logger.warning("弱密码数据文件缺失，使用内置 %d 条兜底", len(_weak_cache))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("弱密码库加载失败: %s，使用内置兜底", exc)
+    result: set[str] = set()
+    for pw_file in _PW_FILES:
+        try:
+            if pw_file.exists():
+                with open(pw_file, encoding="utf-8", errors="ignore") as f:
+                    result.update(
+                        line.strip() for line in f
+                        if line.strip() and not line.startswith("#")
+                    )
+                logger.info("弱密码库加载: %s (%d 条)", pw_file.name, len(result))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("弱密码文件 %s 加载失败: %s", pw_file.name, exc)
+    if result:
+        _weak_cache = result
+    else:
         _weak_cache = set(_FALLBACK_WEAK)
+        logger.warning("弱密码数据文件缺失，使用内置 %d 条兜底", len(_weak_cache))
     return _weak_cache
 
 # 常见危险习惯关键词（用于文本分析）

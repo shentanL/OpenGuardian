@@ -12,10 +12,10 @@ PROVIDERS: dict[str, dict] = {
     "deepseek": {
         "name": "DeepSeek（深度求索）",
         "base_url": "https://api.deepseek.com/anthropic",
-        "models": ["deepseek-chat", "deepseek-reasoner"],
-        "default_model": "deepseek-chat",
+        "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
+        "default_model": "deepseek-v4-pro",
         "format": "anthropic",
-        "description": "DeepSeek 官方 API（Anthropic 兼容端点）。deepseek-chat=V3, deepseek-reasoner=R1",
+        "description": "DeepSeek 官方 API。deepseek-v4-pro=旗舰版, flash=轻量版",
     },
     "kimi": {
         "name": "Kimi（月之暗面）",
@@ -28,10 +28,10 @@ PROVIDERS: dict[str, dict] = {
     "zhipu": {
         "name": "智谱 GLM",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "models": ["glm-4-flash", "glm-4-plus", "glm-4-air", "glm-4"],
+        "models": ["glm-4-flash", "glm-4-air", "glm-4-plus", "glm-4"],
         "default_model": "glm-4-flash",
         "format": "openai",
-        "description": "智谱 AI GLM 系列。glm-4-flash 免费额度最友好",
+        "description": "智谱 AI GLM 系列。glm-4-flash 免费额度友好",
     },
     "qwen": {
         "name": "通义千问（阿里云）",
@@ -55,7 +55,7 @@ PROVIDERS: dict[str, dict] = {
         "models": ["abab6.5s-chat", "abab6.5t-chat", "abab7-chat-preview"],
         "default_model": "abab6.5s-chat",
         "format": "openai",
-        "description": "MiniMax 海螺 AI。abab6.5s 为标准版",
+        "description": "MiniMax 海螺 AI",
     },
     "baichuan": {
         "name": "百川智能",

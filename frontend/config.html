@@ -62,10 +62,15 @@
       <div class="cc-label">
         <svg class="ic"><use href="#ic-cpu"/></svg>
         <span>模型选择</span>
+        <span style="font-size:10px;color:var(--gray-500);margin-left:auto">下拉选择或手动输入</span>
       </div>
       <select id="model-select" class="cc-select">
         <option value="">使用默认模型</option>
       </select>
+      <div class="cc-input-wrap" style="margin-top:6px">
+        <input id="model-custom" type="text" placeholder="或手动输入模型名（如 deepseek-v4-pro）"
+               autocomplete="off" spellcheck="false" style="font-size:11px; padding:8px 12px">
+      </div>
     </div>
 
     <div class="cc-section">
@@ -195,7 +200,7 @@ btnStart?.addEventListener("click", async () => {
         provider: provider,
         api_key: key,
         base_url: provider === "custom" ? customUrl.value.trim() : "",
-        model: modelSel.value || "",
+        model: modelSel.value || document.getElementById("model-custom").value.trim() || "",
       }),
     });
     const data = await resp.json();

@@ -291,7 +291,7 @@ class DetectorAgent(BaseAgent):
                     # 可疑本地监听端口
                     if lport in SUSPICIOUS_PORTS:
                         risks.append(RiskItem(
-                            item_type="network",
+                            item_type="port",
                             name=f"端口 {lport}",
                             detail=f"本地监听端口 {lport}：{SUSPICIOUS_PORTS[lport]}",
                             level=RiskLevel.HIGH,
@@ -307,13 +307,23 @@ class DetectorAgent(BaseAgent):
                         # 黑名单命中：恶意 IP / 恶意域名
                         from ..kb.blacklists import is_malicious_domain, is_malicious_ip
 
-                        if is_malicious_ip(r_ip) or is_malicious_domain(host):
+                        if is_malicious_ip(r_ip):
                             risks.append(RiskItem(
-                                item_type="network",
+                                item_type="malicious_ip",
                                 name=f"{r_ip}:{rport}",
-                                detail=f"连接到黑名单中的恶意地址 {host}:{rport}",
-                                level=RiskLevel.HIGH,
-                                suggestion="该地址在威胁情报黑名单中，立即断网并查杀！",
+                                detail=f"连接到威胁情报黑名单 IP {r_ip}:{rport}",
+                                level=RiskLevel.CRITICAL,
+                                suggestion="该 IP 在威胁情报黑名单中，立即断网并查杀！",
+                                pid=conn.pid,
+                            ))
+                            continue
+                        if is_malicious_domain(host):
+                            risks.append(RiskItem(
+                                item_type="malicious_domain",
+                                name=f"{host}:{rport}",
+                                detail=f"连接到黑名单恶意域名 {host}:{rport}",
+                                level=RiskLevel.CRITICAL,
+                                suggestion="该域名在威胁情报黑名单中，立即断网并查杀！",
                                 pid=conn.pid,
                             ))
                             continue

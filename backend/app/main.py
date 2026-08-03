@@ -239,9 +239,10 @@ def stats() -> dict:
     """仪表盘聚合数据：二维风险分布 + 资源趋势 + 检测历史。"""
     scans_all = db.get_scan_history(limit=200)
 
-    # 二维风险分布：按级别（critical/high/medium/low）× 按类别（process/network/resource/asset）
+    # 风险分布：按级别（critical/high/medium/low）× 按类别（7 类细分）
     levels = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-    types = {"process": 0, "network": 0, "resource": 0, "asset": 0}
+    types = {"process": 0, "network": 0, "resource": 0, "asset": 0,
+             "malicious_ip": 0, "malicious_domain": 0, "port": 0}
     for s in scans_all:
         for r in s.get("risks", []):
             lv = str(r.get("level", "low")).lower()

@@ -330,6 +330,16 @@ body {
 .dist-empty { font-size: 10px; color: var(--gray-500); margin-top: 4px; letter-spacing: 0.5px; }
 .bar-row .val { width: 60px; text-align: right; font-family: var(--mono);
                 color: var(--white); font-weight: 700; font-size: 13px; }
+.bar-row .pct { width: 44px; text-align: right; font-family: var(--mono);
+                color: var(--gray-500); font-size: 11px; }
+/* 类别细分色点 */
+.sw-process { background: #4fd1d9; }
+.sw-network { background: #b48cff; }
+.sw-ip { background: #ff6b6b; box-shadow: 0 0 5px rgba(229, 32, 32, 0.5); }
+.sw-domain { background: #ff9d4d; }
+.sw-port { background: #f5b83d; }
+.sw-resource { background: #3f8500; }
+.sw-asset { background: #76b900; }
 .res-chart { width: 100%; height: 160px; }
 .res-chart path { fill: none; stroke-width: 2; }
 .res-chart .grid-line { stroke: #1f1f1f; }

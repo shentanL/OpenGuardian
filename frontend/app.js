@@ -261,16 +261,21 @@
       ["medium", "中危", "bar-med"],
       ["low", "低危", "bar-low"],
     ];
+    // 类别细分 7 类（Splunk/Defender 安全仪表盘风格）
     const TYPES = [
-      ["process", "进程", "sw-process"],
-      ["network", "网络", "sw-network"],
-      ["resource", "资源", "sw-resource"],
-      ["asset", "资产", "sw-asset"],
+      ["process", "进程异常", "sw-process"],
+      ["network", "可疑网络", "sw-network"],
+      ["malicious_ip", "恶意 IP", "sw-ip"],
+      ["malicious_domain", "恶意域名", "sw-domain"],
+      ["port", "危险端口", "sw-port"],
+      ["resource", "资源占用", "sw-resource"],
+      ["asset", "资产安全", "sw-asset"],
     ];
     const bar = (key, label, cls, val) => `
       <div class="bar-row"><span class="lbl">${label}</span>
         <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct(val)}%"></div></div>
-        <span class="val">${val}</span></div>`;
+        <span class="val">${val}</span>
+        <span class="pct">${pct(val)}%</span></div>`;
     // 明细化：仅渲染有数据的项（排掉 0 值空行），类别全 0 时整组隐藏
     const lvRows = LEVELS.filter(([k]) => (levels[k] || 0) > 0)
       .map(([k, l, c]) => bar(k, l, c, levels[k])).join("");

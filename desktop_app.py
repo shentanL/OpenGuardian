@@ -31,9 +31,27 @@ _server_thread = None
 _tray_icon = None
 
 
+def _kill_port(port: int) -> None:
+    """杀死占用指定端口的进程（Windows）。"""
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["netstat", "-ano"], capture_output=True, text=True, errors="replace", timeout=5,
+        )
+        for line in r.stdout.splitlines():
+            if f":{port}" in line and "LISTENING" in line:
+                pid = line.strip().split()[-1]
+                subprocess.run(["taskkill", "/F", "/PID", pid],
+                    capture_output=True, timeout=5)
+                break
+    except Exception:
+        pass
+
+
 def _start_server() -> None:
-    """后台线程启动 FastAPI 服务。"""
+    """后台线程启动 FastAPI 服务（启动前先清理旧进程）。"""
     sys.path.insert(0, str(BACKEND_DIR))
+    _kill_port(PORT)
     uvicorn.run(
         "app.main:app",
         host="127.0.0.1",

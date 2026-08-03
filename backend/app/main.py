@@ -236,15 +236,20 @@ def scans() -> dict:
 
 @app.get("/api/stats")
 def stats() -> dict:
-    """仪表盘聚合数据：二维风险分布 + 资源趋势 + 检测历史。"""
-    scans_all = db.get_scan_history(limit=200)
+    """仪表盘聚合数据：最近检测风险分布 + 资源趋势 + 检测历史。
 
-    # 风险分布：按级别（critical/high/medium/low）× 按类别（7 类细分）
+    语义（对齐 GitHub 监控台）：面板反映**当前（最近一次检测）**的安全状态，
+    而非历史累计——避免"最近检测 0 风险但面板显示红色"的误导。
+    """
+    scans_all = db.get_scan_history(limit=200)
+    latest = scans_all[0] if scans_all else None
+
+    # 风险分布：基于最近一次检测的 risks（等级 × 7 类细分）
     levels = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     types = {"process": 0, "network": 0, "resource": 0, "asset": 0,
              "malicious_ip": 0, "malicious_domain": 0, "port": 0}
-    for s in scans_all:
-        for r in s.get("risks", []):
+    if latest:
+        for r in latest.get("risks", []):
             lv = str(r.get("level", "low")).lower()
             if lv in levels:
                 levels[lv] += 1
@@ -252,23 +257,15 @@ def stats() -> dict:
             if ty in types:
                 types[ty] += 1
 
-    # 最近风险明细：合并最近 10 次检测的风险项（最多 8 条）
-    last_risks: list[dict] = []
-    for s in scans_all[:10]:
-        for r in s.get("risks", []):
-            last_risks.append(r)
-            if len(last_risks) >= 8:
-                break
-        if len(last_risks) >= 8:
-            break
-
     return {
         "risk_distribution": {
             "levels": levels,
             "types": types,
             "total": sum(levels.values()),
         },
-        "last_risks": last_risks,
+        # 最近一次检测的风险明细（与分布一致，同一数据源）
+        "last_risks": (latest.get("risks", []) if latest else []),
+        "last_scan": latest,
         "resources": db.get_resource_history(limit=120),
         "scans": scans_all[:10],
         "audit_count": len(db.get_audit(limit=1000)),

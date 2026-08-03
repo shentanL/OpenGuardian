@@ -466,10 +466,9 @@
     const title = document.getElementById("sb-title");
     const sub = document.getElementById("sb-sub");
     const time = document.getElementById("sb-time");
-    const scans = data.scans || [];
-    const latest = scans[0];
-    const dist = data.risk_distribution || {};
-    const total = dist.total || 0;
+    const latest = data.last_scan || (data.scans || [])[0];
+    const total = latest ? (latest.total || 0) : 0;
+    const high = latest ? (latest.high || 0) : 0;
     if (!latest) {
       banner.className = "status-banner neutral";
       title.textContent = "尚未运行检测";
@@ -479,10 +478,8 @@
     }
     const t = (latest.time || "").replace("T", " ").slice(0, 19);
     if (total > 0) {
-      const lv = dist.levels || {};
-      const crit = (lv.critical || 0) + (lv.high || 0);
       banner.className = "status-banner danger";
-      title.textContent = `检测到 ${total} 项风险${crit ? `（含 ${crit} 项高危）` : ""}`;
+      title.textContent = `检测到 ${total} 项风险${high ? `（含 ${high} 项高危）` : ""}`;
       sub.textContent = (latest.summary || "").slice(0, 60);
     } else {
       banner.className = "status-banner safe";
@@ -519,12 +516,12 @@
       renderRiskBars(Object.assign({}, dist, { last_risks: data.last_risks || [] }));
       renderResChart(data.resources || []);
       renderScanList(data.scans || []);
-      // KPI 卡片
+      // KPI 卡片：高危/检测项基于最近一次检测（与分布同源）
       const setKpi = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-      const lv = dist.levels || {};
-      const high = (lv.critical || 0) + (lv.high || 0);
+      const latest = data.last_scan || {};
+      const high = latest.high || 0;
       setKpi("kpi-high", high);
-      setKpi("kpi-total", dist.total || 0);
+      setKpi("kpi-total", latest.total || 0);
       setKpi("kpi-audit", data.audit_count || 0);
       setKpi("kpi-scans", (data.scans || []).length);
       // 实时内存（来自最近资源采样）

@@ -830,7 +830,7 @@
     if (!nameEl || !d.providers) return;
     const cur = d.providers.find(p => p.key === (d.provider || "deepseek"));
     if (!cur) { dot.className = "dot offline"; return; }
-    nameEl.textContent = cur.name + " · " + (d.model || cur.default_model);
+    nameEl.textContent = cur.name + (d.model ? (" · " + d.model) : "");
     dot.className = "dot online";
   }).catch(() => {
     document.querySelector("#chat-status .dot")?.classList?.replace("online", "offline");

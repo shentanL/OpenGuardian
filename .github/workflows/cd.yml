@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,13 +19,24 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyinstaller httpx psutil pydantic netaddr dotenv pywebview pystray Pillow
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pyinstaller
+
+      # 打包需要 backend/.env（真实 Key 存 GitHub Secrets，不进仓库）
+      - name: Create .env from secrets
+        run: |
+          echo "DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}" > backend/.env
+          if [ ! -s backend/.env ] || grep -q "DEEPSEEK_API_KEY=$" backend/.env; then
+            echo "::warning::DEEPSEEK_API_KEY secret 未配置，构建将使用占位符"
+            echo "DEEPSEEK_API_KEY=ci-placeholder-key" > backend/.env
+          fi
+        shell: bash
 
       - name: Build with PyInstaller
         run: pyinstaller OpenGuardian.spec --clean --noconfirm
 
       - name: Install Inno Setup
-        uses: Minionguyjpro/Inno-Setup-Action@v1
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.9
         with:
           path: setup.iss
 

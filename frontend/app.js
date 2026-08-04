@@ -446,6 +446,7 @@
       return `<div class="risk-item clickable" data-expand="0">
         <span class="lv-badge ${LV_CLS[lv] || "lv-low"}">${lv}</span>
         <span class="risk-name">${escapeHtml(name)}</span>
+        <span class="atk-tech">${escapeHtml(r.attack_tech || "")}</span>
         <span class="risk-desc">${escapeHtml(desc)}</span>
         <span class="expand-hint">${ic("ic-gauge")}<i>查看</i></span>
         <div class="risk-sug">${sug ? `建议：${escapeHtml(sug)}` : ""}</div>

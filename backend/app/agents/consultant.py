@@ -357,11 +357,19 @@ class ConsultantAgent(BaseAgent):
             refl,
             total_raw=len(raw_risks),
         )
+        # 注入 MITRE ATT&CK 映射 + 提取纯 RiskItem 列表
+        from ..kb.attack_map import get_technique_display
+        enriched_risks: list = []
+        for vr in all_risks:
+            r = vr.risk if hasattr(vr, 'risk') else vr
+            if not r.attack_tech:
+                r.attack_tech = get_technique_display(r.item_type)
+            enriched_risks.append(r)
         return AgentResult(
             agent=self.name,
             success=True,
             message=reply,
-            risks=all_risks,
+            risks=enriched_risks,
             data={
                 "intent": Intent.DETECT.value,
                 "verified": {
@@ -471,6 +479,8 @@ class ConsultantAgent(BaseAgent):
         if not risks:
             return f"检测完毕～ {summary}，电脑状态不错 👍\n\n（说明一下：这是轻量级检测，代替不了专业的杀毒软件哈）"
 
+        from ..kb.attack_map import get_technique_display
+
         lines = [f"检测结果出来了——{summary}：\n"]
         for r in risks:
             icon = {
@@ -479,7 +489,8 @@ class ConsultantAgent(BaseAgent):
                 RiskLevel.MEDIUM: "🟡",
                 RiskLevel.LOW: "🟢",
             }.get(r.level, "⚪")
-            lines.append(f"{icon} {r.name}")
+            tech = get_technique_display(r.item_type)
+            lines.append(f"{icon} {r.name}  [ATT&CK {tech}]")
             lines.append(f"   {r.detail}")
             if r.suggestion:
                 lines.append(f"   → {r.suggestion}")
@@ -538,9 +549,11 @@ class ConsultantAgent(BaseAgent):
             parts.append(f"\n我直接帮你处理掉了 {', '.join(names)}——这几个基本可以确定是恶意程序，留着会有风险。")
 
         if suggest_items:
+            from ..kb.attack_map import get_technique_display
             parts.append("\n下面这几个建议你处理一下：")
             for vr, tr, _ in suggest_items:
-                parts.append(f"\n🔸 {vr.risk.name}")
+                tech = get_technique_display(vr.risk.item_type)
+                parts.append(f"\n🔸 {vr.risk.name}  [ATT&CK {tech}]")
                 parts.append(f"   {tr.suggested_action}")
                 if vr.risk.pid:
                     parts.append(f"   回复「结束进程 {vr.risk.pid}」我来处理")

@@ -440,6 +440,14 @@ body {
 .lv-med  { color: #f5b83d; border-color: #ef9100; background: rgba(239, 145, 0, 0.12); }
 .lv-low  { color: #76b900; border-color: #3f8500; background: rgba(63, 133, 0, 0.12); }
 .risk-name { font-family: var(--mono); color: var(--gray-100); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+
+/* MITRE ATT&CK 技术编号标签 */
+.atk-tech {
+  font-family: var(--mono); font-size: 9px; color: var(--green);
+  background: rgba(118,185,0,0.08); border: 1px solid rgba(118,185,0,0.3);
+  border-radius: var(--radius); padding: 1px 6px;
+  white-space: nowrap; flex-shrink: 0;
+}
 .risk-desc { color: var(--gray-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .dist-empty { font-size: 10px; color: var(--gray-500); margin-top: 4px; letter-spacing: 0.5px; }
 /* ═══ 可点击元素（GitHub affordance 区分）═══ */

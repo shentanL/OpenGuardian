@@ -33,6 +33,7 @@ class RiskItem(BaseModel):
     level: RiskLevel = RiskLevel.LOW
     suggestion: str = Field("", description="通俗化处置建议")
     pid: Optional[int] = None
+    attack_tech: str = Field("", description="MITRE ATT&CK 技术编号（如 T1053.005 Scheduled Task）")
     extra: dict = Field(default_factory=dict)
 
 

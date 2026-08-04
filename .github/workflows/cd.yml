@@ -36,9 +36,18 @@ jobs:
         run: pyinstaller OpenGuardian.spec --clean --noconfirm
 
       - name: Install Inno Setup
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.9
-        with:
-          path: setup.iss
+        shell: powershell
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile Installer (ISCC)
+        shell: powershell
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -Recurse | Select-Object -First 1).FullName
+          }
+          Write-Host "Using ISCC: $iscc"
+          & $iscc setup.iss
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

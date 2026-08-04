@@ -59,12 +59,5 @@ class TestAPI(unittest.TestCase):
             self.assertEqual(r.status_code, 200, path)
 
 
-def _ping() -> bool:
-    try:
-        return httpx.get(f"{BASE}/api/health", timeout=3).status_code == 200
-    except Exception:  # noqa: BLE001
-        return False
-
-
 if __name__ == "__main__":
     unittest.main()

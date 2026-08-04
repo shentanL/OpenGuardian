@@ -171,7 +171,7 @@
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
 
         // 按 SSE 事件边界拆分（空行分隔）
         const events = buffer.split("\n\n");
@@ -191,6 +191,17 @@
               }
               botMsg.querySelector(".bubble").innerHTML = escapeHtml(botText).replace(/\n/g, "<br>");
               chatEl.scrollTop = chatEl.scrollHeight;
+            } else if (data.type === "session") {
+              // 流式结束后服务端返回持久化的 session_id
+              if (data.session_id) {
+                const tmp = document.getElementById("temp-new-session");
+                if (tmp) tmp.remove();
+                currentSessionId = data.session_id;
+                localStorage.setItem("og_session", data.session_id);
+                if (!sessionMeta[data.session_id]) sessionMeta[data.session_id] = { title: "" };
+                if (!sessionMeta[data.session_id].title) { sessionMeta[data.session_id].title = text.slice(0, 18); try { localStorage.setItem('og_session_meta', JSON.stringify(sessionMeta)); } catch(e) {} }
+                loadSessions();
+              }
             } else if (data.type === "result") {
               finalData = data;
             }
@@ -220,19 +231,22 @@
           const retryBtn = document.createElement("button");
           retryBtn.className = "retry-btn";
           retryBtn.innerHTML = "🔄 重试";
-          retryBtn.onclick = () => sendMessage(text);
+          retryBtn.onclick = () => { inputEl.value = text; send(); };
           chatEl.lastElementChild?.querySelector(".bubble")?.appendChild(retryBtn);
         }
         if (finalData.session_id) {
+          // 移除临时"新会话"条目
+          const tmp = document.getElementById("temp-new-session");
+          if (tmp) tmp.remove();
           currentSessionId = finalData.session_id;
           localStorage.setItem("og_session", currentSessionId);
           if (!sessionMeta[currentSessionId]) sessionMeta[currentSessionId] = { title: "" };
           if (!sessionMeta[currentSessionId].title) sessionMeta[currentSessionId].title = text.slice(0, 18);
           loadSessions();
         }
-        // 检测/扫描完成后自动刷新仪表盘数据
-        if (finalData.risks && finalData.risks.length > 0) {
-          loadDashboard();
+        // 检测/扫描完成后立即刷新仪表盘（不论是否有风险）
+        if (finalData.intent === "detect" || (finalData.risks && finalData.risks.length > 0)) {
+          loadDashboardDebounced();
         }
 
         if (finalData.needs_confirmation && finalData.execute_hint) {
@@ -272,17 +286,103 @@
     tabDash.classList.toggle("active", showDash);
     if (showDash) {
       loadDashboard();
-      if (!window._dashTimer) {
-        window._dashTimer = setInterval(loadDashboard, 3000); // 每 3s 自动刷新（1s 采样实时趋势）
-      }
+      // WebSocket 实时推送取代轮询
+      if (!window._ws) connectRealtime();
     }
   }
   // 离开监控台时停止刷新
   function stopDashRefresh() {
-    if (window._dashTimer) { clearInterval(window._dashTimer); window._dashTimer = null; }
+    // WebSocket stays connected for alerts
   }
   tabChat.addEventListener("click", () => { switchTab(false); stopDashRefresh(); });
   tabDash.addEventListener("click", () => switchTab(true));
+
+  /* ── WebSocket 实时推送 ── */
+  function connectRealtime() {
+    if (window._ws && window._ws.readyState === WebSocket.OPEN) return;
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(proto + "//" + location.host + "/ws");
+    window._ws = ws;
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "resource_snapshot" && !dashMain.classList.contains("hidden")) {
+          updateRealtimeGauges(msg.data);
+        } else if (msg.type === "dashboard_refresh") {
+          // 检测完成后自动刷新仪表盘
+          loadDashboardDebounced();
+        } else if (msg.type === "security_alert") {
+          window.OGNotify.threat(msg.data.level, msg.data.title, msg.data.message, msg.data.pid);
+        }
+      } catch (ex) { /* ignore */ }
+    };
+    ws.onclose = () => { window._ws = null; };
+    ws.onerror = () => { window._ws = null; };
+  }
+
+  function updateRealtimeGauges(data) {
+    // 实时更新 KPI 卡片上的内存值
+    const memEl = document.getElementById("kpi-mem");
+    if (memEl && data.mem !== undefined) memEl.textContent = data.mem.toFixed(0) + "%";
+    // 更新 CPU 趋势（追加到图表数据）
+    const svg = document.getElementById("res-chart");
+    if (!svg || !svg._samples) return;
+    svg._samples.push({ time: data.time || "", cpu: data.cpu, mem: data.mem, disk: data.disk });
+    if (svg._samples.length > 120) svg._samples.shift();
+    // 节流：每 2 次更新才重绘图表
+    if (!svg._tick) svg._tick = 0;
+    svg._tick++;
+    if (svg._tick % 2 === 0) window._renderResChart(svg._samples);
+  }
+
+  /* ── 导出功能 ── */
+  async function exportScans(format) {
+    try {
+      const resp = await fetch("/api/scans");
+      const data = await resp.json();
+      const scans = data.history || [];
+      if (!scans.length) { window.OGNotify.toast("info", "无检测记录", "先运行一次检测再导出"); return; }
+
+      if (format === "csv") {
+        let csv = "时间,风险总数,高危数,摘要\n";
+        scans.forEach(s => {
+          csv += `"${(s.time||'').replace('T',' ')}",${s.total||0},${s.high||0},"${(s.summary||'').replace(/"/g,'""')}"\n`;
+        });
+        downloadFile("openguardian-scans.csv", csv, "text/csv");
+      } else if (format === "json") {
+        downloadFile("openguardian-scans.json", JSON.stringify(scans, null, 2), "application/json");
+      }
+      window.OGNotify.toast("success", "导出成功", `${scans.length} 条检测记录已导出为 ${format.toUpperCase()}`);
+    } catch (err) {
+      window.OGNotify.toast("high", "导出失败", err.message);
+    }
+  }
+
+  function downloadFile(filename, content, mimeType) {
+    const blob = new Blob(["﻿" + content], { type: mimeType + ";charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // 导出按钮绑定
+  document.addEventListener("DOMContentLoaded", () => {
+    const exportBar = document.createElement("div");
+    exportBar.className = "export-bar";
+    exportBar.innerHTML = `
+      <button class="btn-export" data-format="csv">CSV</button>
+      <button class="btn-export" data-format="json">JSON</button>
+    `;
+    exportBar.querySelectorAll(".btn-export").forEach(btn => {
+      btn.addEventListener("click", () => exportScans(btn.dataset.format));
+    });
+    const scanList = document.getElementById("scan-list");
+    if (scanList && scanList.parentNode) {
+      scanList.parentNode.insertBefore(exportBar, scanList);
+    }
+  });
 
   // 等级卡元数据（Splunk/Defender 风格）
   const LEVEL_CARDS = [
@@ -382,6 +482,48 @@
 
   function renderResChart(samples) {
     const svg = document.getElementById("res-chart");
+    svg._samples = samples;  // 存储供 WebSocket 追加
+
+    // 暴露全局重绘函数供 WebSocket 回调
+    window._renderResChart = function(samps) {
+      const s2 = document.getElementById("res-chart");
+      if (!s2 || !samps || !samps.length) return;
+      const W2 = 400, H2 = 150, P2 = 14;
+      const n2 = samps.length;
+      const last2 = samps[n2 - 1];
+      const xn = (i) => P2 + (i * (W2 - 2 * P2)) / (n2 - 1);
+      const yn = (v) => H2 - P2 - (v / 100) * (H2 - 2 * P2);
+      const smooth = (key) => {
+        const pts = samps.map((s, i) => ({ x: xn(i), y: yn(s[key]) }));
+        let d = "M" + pts[0].x.toFixed(1) + "," + pts[0].y.toFixed(1);
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+          const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+          const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+          d += " C" + c1x.toFixed(1) + "," + c1y.toFixed(1) + " " + c2x.toFixed(1) + "," + c2y.toFixed(1) + " " + p2.x.toFixed(1) + "," + p2.y.toFixed(1);
+        }
+        return d;
+      };
+      const dot2 = (key, color) => '<circle cx="' + xn(n2 - 1).toFixed(1) + '" cy="' + yn(last2[key]).toFixed(1) + '" r="3" fill="#000" stroke="' + color + '" stroke-width="2"/>';
+      s2.innerHTML =
+        '<line x1="' + P2 + '" y1="' + yn(85) + '" x2="' + (W2 - P2) + '" y2="' + yn(85) + '" stroke="#df6500" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>' +
+        '<polygon points="' + smooth("cpu") + ' L' + xn(n2 - 1).toFixed(1) + ',' + (H2 - P2) + ' L' + xn(0).toFixed(1) + ',' + (H2 - P2) + ' Z" fill="url(#grad-cpu)" opacity="0.22"/>' +
+        '<polygon points="' + smooth("mem") + ' L' + xn(n2 - 1).toFixed(1) + ',' + (H2 - P2) + ' L' + xn(0).toFixed(1) + ',' + (H2 - P2) + ' Z" fill="url(#grad-mem)" opacity="0.22"/>' +
+        '<polygon points="' + smooth("disk") + ' L' + xn(n2 - 1).toFixed(1) + ',' + (H2 - P2) + ' L' + xn(0).toFixed(1) + ',' + (H2 - P2) + ' Z" fill="url(#grad-disk)" opacity="0.22"/>' +
+        '<path d="' + smooth("cpu") + '" fill="none" stroke="#76b900" stroke-width="2"/>' +
+        '<path d="' + smooth("mem") + '" fill="none" stroke="#bff230" stroke-width="2"/>' +
+        '<path d="' + smooth("disk") + '" fill="none" stroke="#a7a7a7" stroke-width="2"/>' +
+        dot2("cpu", "#76b900") + dot2("mem", "#bff230") + dot2("disk", "#a7a7a7");
+      const le2 = document.querySelector(".legend");
+      if (le2) {
+        const sa = (key) => { const vv = samps.map(s => s[key]); return { avg: (vv.reduce((a,b)=>a+b,0)/vv.length).toFixed(1), max: Math.max(...vv).toFixed(1) }; };
+        const sc = sa("cpu"), sm = sa("mem"), sd = sa("disk");
+        le2.innerHTML = '<span class="lg lg-cpu"><i class="sw sw-cpu"></i>CPU <b>' + last2.cpu.toFixed(1) + '%</b><em>avg ' + sc.avg + '% - max ' + sc.max + '%</em></span>' +
+          '<span class="lg lg-mem"><i class="sw sw-mem"></i>MEM <b>' + last2.mem.toFixed(1) + '%</b><em>avg ' + sm.avg + '% - max ' + sm.max + '%</em></span>' +
+          '<span class="lg lg-disk"><i class="sw sw-disk"></i>DISK <b>' + last2.disk.toFixed(1) + '%</b><em>avg ' + sd.avg + '% - max ' + sd.max + '%</em></span>';
+      }
+    };
+
     const legendEl = document.querySelector(".legend");
     if (!samples || samples.length < 2) {
       svg.innerHTML = `<text x="200" y="80" text-anchor="middle" fill="#757575" font-size="12" font-family="monospace">采样中…（每 1s 自动记录）</text>`;
@@ -650,7 +792,15 @@
     });
   }
 
-  async function loadDashboard() {
+  /* 去抖版 loadDashboard（防止连续多次请求） */
+let _dashTimer = null;
+function loadDashboardDebounced(delay) {
+  if (typeof delay === "undefined") delay = 300;
+  clearTimeout(_dashTimer);
+  _dashTimer = setTimeout(loadDashboard, delay);
+}
+
+async function loadDashboard() {
     try {
       const resp = await fetch("/api/stats");
       const data = await resp.json();
@@ -715,9 +865,10 @@
   }
 
   function sessionTitle(id) {
-    // 从当前已加载的消息里取第一条用户消息作为标题
+    // 从已加载的消息里取第一条用户消息作为标题；未缓存时回退到会话 ID 前缀
     const meta = sessionMeta[id];
-    return meta ? meta.title : "";
+    if (meta && meta.title) return meta.title;
+    return id ? id.slice(0, 10) + "…" : "新会话";
   }
 
   const sessionMeta = {}; // id -> {title}
@@ -741,6 +892,10 @@
       if (!messages.length) addWelcome();
     } catch (err) {
       addMsg("bot", ic("ic-alert") + " 加载会话失败：" + escapeHtml(err.message));
+      // 重置会话状态，避免用户卡在 broken session
+      currentSessionId = "";
+      localStorage.removeItem("og_session");
+      addWelcome();
     }
     loadSessions();
   }
@@ -750,7 +905,15 @@
     localStorage.removeItem("og_session");
     chatEl.innerHTML = "";
     addWelcome();
-    loadSessions();
+    // 高亮侧边栏"新会话"项
+    sessionListEl.querySelectorAll(".session-item").forEach(el => el.classList.remove("active"));
+    // 插入临时"新会话"条目
+    const tempEl = document.createElement("div");
+    tempEl.className = "session-item active";
+    tempEl.id = "temp-new-session";
+    tempEl.innerHTML = `${ic("ic-chat")}<span class="s-title" style="color:var(--green)">✦ 新会话</span><span class="s-time">现在</span>`;
+    sessionListEl.insertBefore(tempEl, sessionListEl.firstChild);
+    loadSessions();  // 异步刷新真实列表（新会话会在首次发消息后被持久化）
   }
 
   function addWelcome() {
@@ -769,8 +932,8 @@
       <div class="bubble">
         <button class="msg-copy" title="复制">${ic("ic-copy")}</button>
         <div class="bubble-inner">
-          <div class="welcome-title">你好，我是 OpenGuardian</div>
-          <div class="welcome-sub">你的 AI 个人数字安全助手 —— 点一下试试，或直接输入你的问题</div>
+          <div class="welcome-title">嗨，我是 OpenGuardian 👋</div>
+          <div class="welcome-sub">你的个人电脑安全管家。我帮你检测风险、解答安全问题、科普防骗套路——直接跟我说就行，试试下面的？</div>
           <div class="wcards">${cards}</div>
         </div>
       </div>`;
@@ -841,6 +1004,12 @@
     dot.className = "dot online";
   }).catch(() => {
     document.querySelector("#chat-status .dot")?.classList?.replace("online", "offline");
+  });
+
+  // 设置按钮 → 打开 API 设置面板
+  const btnSettings = document.getElementById("btn-settings");
+  btnSettings?.addEventListener("click", () => {
+    window.location.href = "/config?mode=settings";
   });
 
   // 会话初始化：有历史会话则恢复，否则欢迎消息

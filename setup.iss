@@ -3,7 +3,7 @@
 ; 前提：先运行 build.bat 选项 1 生成 dist\OpenGuardian 文件夹
 
 #define MyAppName "OpenGuardian"
-#define MyAppVersion "0.5.8"
+#define MyAppVersion "0.7.0"
 #define MyAppPublisher "OpenGuardian Team"
 #define MyAppURL "https://github.com/OpenGuardian"
 #define MyAppExeName "OpenGuardian.exe"

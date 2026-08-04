@@ -5,17 +5,20 @@
 - 3 次指数退避重试（1s/2s/4s），自动处理网络波动
 - 流式失败自动降级为非流式
 - 支持 OpenAI/Anthropic 多格式
+- 线程安全的单例生命周期管理
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import threading
 from typing import Any, AsyncIterator, Optional
 
 import httpx
 
 from ..config import settings
+from ..prompts import FALLBACK_AI_UNAVAILABLE, FALLBACK_AI_RETRY
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +85,7 @@ class LLMClient:
             json_body["system"] = sys_text
             json_body["messages"] = filtered
             if stream:
-                del json_body["stream"]  # Anthropic uses different streaming
+                json_body["stream"] = True
         else:
             headers = {"Authorization": f"Bearer {self.api_key}"}
             json_body["messages"] = payload_messages
@@ -143,12 +146,14 @@ class LLMClient:
         system: str,
         fallback: dict,
         temperature: float = 0.2,
+        max_tokens: Optional[int] = None,
     ) -> dict[str, Any]:
         """要求模型输出 JSON；失败返回 fallback。"""
         text = await self.chat(
             messages,
             system=system + "\n请只输出 JSON，不要输出任何其他文字。",
             temperature=temperature,
+            max_tokens=max_tokens,
         )
         if not text:
             return fallback
@@ -171,9 +176,10 @@ class LLMClient:
         """流式对话：异步生成器，逐块产出文本。
 
         失败时自动降级为非流式 chat() + 保底提示。
+        支持 OpenAI 和 Anthropic 两种 SSE 格式。
         """
         if not self.available:
-            yield "（AI 服务未配置，请先在设置中填写 API Key）"
+            yield FALLBACK_AI_UNAVAILABLE
             return
 
         headers, json_body, url = self._build_request(messages, system, max_tokens, temperature, stream=True)
@@ -187,14 +193,24 @@ class LLMClient:
                     async for line in resp.aiter_lines():
                         if not line.startswith("data:"):
                             continue
-                        data = line[5:].strip()
-                        if data == "[DONE]":
+                        data_str = line[5:].strip()
+                        if data_str == "[DONE]":
                             return
                         try:
-                            chunk = json.loads(data)
-                            delta = chunk["choices"][0]["delta"].get("content")
-                            if delta:
-                                yield delta
+                            chunk = json.loads(data_str)
+                            # OpenAI 格式: {"choices": [{"delta": {"content": "..."}}]}
+                            if "choices" in chunk:
+                                delta = chunk["choices"][0].get("delta", {})
+                                if "content" in delta and delta["content"]:
+                                    yield delta["content"]
+                            # Anthropic 格式: {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "..."}}
+                            elif chunk.get("type") == "content_block_delta":
+                                delta = chunk.get("delta", {})
+                                if delta.get("type") == "text_delta":
+                                    text = delta.get("text", "")
+                                    if text:
+                                        yield text
+                            # Anthropic message_start / content_block_start / message_delta / ping — 忽略
                         except (json.JSONDecodeError, KeyError, IndexError):
                             continue
                     return  # 正常结束
@@ -210,15 +226,52 @@ class LLMClient:
         if text:
             yield text
         else:
-            yield "（服务暂时无法连接 AI，请稍后重试。提示：检查网络或更换 API 提供商）"
+            yield FALLBACK_AI_RETRY
 
 
-# 全局单例
+# 全局单例（线程安全）
 _llm_client: Optional[LLMClient] = None
+_llm_lock = threading.Lock()
 
 
 def get_llm_client() -> LLMClient:
+    """获取 LLM 客户端单例（线程安全）。"""
     global _llm_client
-    if _llm_client is None:
-        _llm_client = LLMClient()
-    return _llm_client
+    if _llm_client is not None:
+        return _llm_client
+    with _llm_lock:
+        if _llm_client is None:
+            _llm_client = LLMClient()
+            logger.info("LLM client initialized: %s", _llm_client.model)
+        return _llm_client
+
+
+def invalidate_llm_client() -> None:
+    """配置变更后使 LLM 客户端失效（下次调用自动重新创建并读取新配置）。
+
+    线程安全：加锁替换，旧客户端在新线程中异步关闭。
+    """
+    global _llm_client
+    with _llm_lock:
+        old = _llm_client
+        _llm_client = None
+
+    if old is None:
+        return
+
+    # 在新线程中安全关闭旧客户端的连接池
+    def _close_client(client: httpx.AsyncClient) -> None:
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(client.aclose())
+            loop.close()
+        except Exception:
+            pass
+
+    threading.Thread(
+        target=_close_client,
+        args=(old._client,),
+        daemon=True,
+        name="llm-cleanup",
+    ).start()
+    logger.info("LLM client invalidated, new config will be loaded on next request")

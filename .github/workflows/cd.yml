@@ -1,0 +1,37 @@
+name: CD — Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller httpx psutil pydantic netaddr dotenv pywebview pystray Pillow
+
+      - name: Build with PyInstaller
+        run: pyinstaller OpenGuardian.spec --clean --noconfirm
+
+      - name: Install Inno Setup
+        uses: Minionguyjpro/Inno-Setup-Action@v1
+        with:
+          path: setup.iss
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: OpenGuardian-*-Setup.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,6 +8,7 @@ venv/
 # Env / secrets
 .env
 .env.local
+config.json
 
 # Build artifacts
 dist/
@@ -24,5 +25,7 @@ Thumbs.db
 
 # Data
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 logs/

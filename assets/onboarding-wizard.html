@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!-- OpenGuardian 首次运行引导 — 3 步：配置 AI → 了解功能 → 首次扫描 -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OpenGuardian · 初始设置</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#000;
+  color:#fff;
+  font-family: -apple-system,"Microsoft YaHei",sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  height:100vh;overflow:hidden;
+  -webkit-app-region: drag;
+  user-select:none;
+}
+canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.wizard{position:relative;z-index:1;width:520px;max-width:92vw}
+
+/* 进度指示器 */
+.steps{display:flex;justify-content:center;gap:8px;margin-bottom:32px}
+.step-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:#2a2a2a;transition:all 0.4s;
+}
+.step-dot.active{background:#76b900;box-shadow:0 0 12px rgba(118,185,0,0.6)}
+.step-dot.done{background:#3f8500}
+
+/* 内容面板 */
+.panel{display:none;animation:fadeIn 0.5s ease}
+.panel.active{display:block}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.panel h2{
+  font-family:ui-monospace,monospace;
+  font-size:22px;font-weight:800;letter-spacing:2px;
+  margin-bottom:6px;color:#fff;
+}
+.panel h2 span{color:#76b900}
+.panel .sub{font-size:12px;color:#757575;margin-bottom:28px;letter-spacing:1px}
+
+/* 表单 */
+.form-group{margin-bottom:18px}
+.form-group label{
+  display:block;font-size:11px;font-weight:700;
+  color:#a7a7a7;letter-spacing:1px;margin-bottom:6px;
+}
+.select, .input{
+  width:100%;padding:12px 14px;
+  background:#0a0a0a;border:1px solid #2a2a2a;
+  border-radius:2px;color:#76b900;font-size:13px;
+  font-family:ui-monospace,monospace;
+  outline:none;transition:border-color 0.2s;
+}
+.select:focus,.input:focus{border-color:#76b900;box-shadow:0 0 8px rgba(118,185,0,0.2)}
+
+/* 功能卡片 */
+.feature-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
+.fcard{
+  background:#0d0d0d;border:1px solid #2a2a2a;border-radius:2px;
+  padding:18px 16px;transition:border-color 0.2s;
+}
+.fcard:hover{border-color:#76b900}
+.fcard .fc-icon{font-size:22px;margin-bottom:8px}
+.fcard .fc-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px}
+.fcard .fc-desc{font-size:11px;color:#757575;line-height:1.5}
+
+/* 扫描动画 */
+.scan-visual{
+  display:flex;align-items:center;justify-content:center;
+  gap:16px;margin:24px 0;padding:28px;
+  background:#0a0a0a;border:1px solid #2a2a2a;border-radius:2px;
+}
+.scan-module{
+  width:48px;height:48px;border-radius:2px;
+  background:#0d0d0d;border:1px solid #2a2a2a;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;transition:all 0.3s;
+}
+.scan-module.scanning{border-color:#76b900;box-shadow:0 0 16px rgba(118,185,0,0.4)}
+
+/* 按钮 */
+.actions{display:flex;justify-content:space-between;margin-top:28px}
+.btn{
+  padding:10px 24px;border-radius:2px;font-size:13px;font-weight:700;
+  cursor:pointer;letter-spacing:1px;transition:all 0.15s;
+  font-family:inherit;-webkit-app-region:no-drag;
+}
+.btn-ghost{background:transparent;border:1px solid #2a2a2a;color:#757575}
+.btn-ghost:hover{border-color:#76b900;color:#fff}
+.btn-primary{
+  background:#76b900;border:none;color:#000;
+  box-shadow:0 0 16px rgba(118,185,0,0.3);
+}
+.btn-primary:hover{background:#bff230}
+.btn-primary:disabled{background:#555;color:#333;cursor:not-allowed;box-shadow:none}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div class="wizard">
+  <div class="steps">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+  </div>
+
+  <!-- 步骤 1：配置 AI -->
+  <div class="panel active" id="panel1">
+    <h2><span>01</span> 配置 AI 服务</h2>
+    <p class="sub">选择一个 AI 提供商来驱动安全助手</p>
+    <div class="form-group">
+      <label>AI 提供商</label>
+      <select class="select" id="provider">
+        <option value="deepseek">DeepSeek（推荐·免费额度）</option>
+        <option value="openai">OpenAI (ChatGPT)</option>
+        <option value="ollama">Ollama（本地运行·免费）</option>
+        <option value="kimi">Kimi (月之暗面)</option>
+        <option value="zhipu">智谱 GLM</option>
+      </select>
+    </div>
+    <div class="form-group" id="key-group">
+      <label>API Key</label>
+      <input class="input" type="password" id="apikey" placeholder="sk-xxxxxxxx" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="actions">
+      <div></div>
+      <button class="btn btn-primary" onclick="next(2)">继续 →</button>
+    </div>
+  </div>
+
+  <!-- 步骤 2：了解功能 -->
+  <div class="panel" id="panel2">
+    <h2><span>02</span> 你的安全工具箱</h2>
+    <p class="sub">OpenGuardian 内置了这些能力</p>
+    <div class="feature-cards">
+      <div class="fcard">
+        <div class="fc-icon">🔍</div>
+        <div class="fc-name">智能检测</div>
+        <div class="fc-desc">进程·网络·漏洞·CVE — 8 模块全维度扫描</div>
+      </div>
+      <div class="fcard">
+        <div class="fc-icon">🤖</div>
+        <div class="fc-name">AI 安全助手</div>
+        <div class="fc-desc">说人话讲安全·查密码·科普防骗</div>
+      </div>
+      <div class="fcard">
+        <div class="fc-icon">🛡️</div>
+        <div class="fc-name">实时防护</div>
+        <div class="fc-desc">进程监控·行为基线·自动告警</div>
+      </div>
+      <div class="fcard">
+        <div class="fc-icon">📡</div>
+        <div class="fc-name">威胁情报</div>
+        <div class="fc-desc">5 源实时更新·百万级 IoC·病毒库</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="prev(1)">← 上一步</button>
+      <button class="btn btn-primary" onclick="next(3)">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- 步骤 3：首次扫描 -->
+  <div class="panel" id="panel3">
+    <h2><span>03</span> 首次安全体检</h2>
+    <p class="sub">让 OpenGuardian 检查你的电脑健康状态</p>
+    <div class="scan-visual" id="scan-modules">
+      <div class="scan-module">🖥</div>
+      <div class="scan-module">🌐</div>
+      <div class="scan-module">📊</div>
+      <div class="scan-module">🔒</div>
+      <div class="scan-module">🛡️</div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:#a7a7a7" id="scan-status">准备好了吗？</p>
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="prev(2)">← 上一步</button>
+      <button class="btn btn-primary" id="btn-scan" onclick="startScan()">🛡️ 开始扫描</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var c=document.getElementById('bg'),ctx=c.getContext('2d');
+  var W=c.width=window.innerWidth, H=c.height=window.innerHeight;
+  var pts=[];
+  for(var i=0;i<30;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3,r:Math.random()*1+0.3});
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<pts.length;i++){
+      var p=pts[i];p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      ctx.fillStyle='rgba(118,185,0,0.4)';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+var cur=1;
+function showPanel(n){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel'+n).classList.add('active');
+  for(var i=1;i<=3;i++){
+    var d=document.getElementById('dot'+i);
+    d.className='step-dot'+(i===n?' active':i<n?' done':'');
+  }
+  cur=n;
+}
+function next(n){showPanel(n)}
+function prev(n){showPanel(n)}
+
+function startScan(){
+  var btn=document.getElementById('btn-scan');
+  btn.disabled=true;
+  btn.textContent='扫描中…';
+  var mods=document.querySelectorAll('.scan-module');
+  var status=document.getElementById('scan-status');
+  var steps=['🔍 检测进程安全…','🌐 分析网络连接…','📊 评估系统资源…','🔒 扫描安全漏洞…','🛡️ 核查防护状态…'];
+  mods.forEach(function(m,i){
+    setTimeout(function(){m.classList.add('scanning');status.textContent=steps[i]},i*700);
+  });
+  setTimeout(function(){
+    status.textContent='✅ 体检完成！电脑状态良好。';
+    btn.textContent='进入 OpenGuardian →';
+    btn.disabled=false;
+    btn.onclick=function(){/* 关闭向导，打开主界面 */};
+  },4000);
+}
+</script>
+</body>
+</html>

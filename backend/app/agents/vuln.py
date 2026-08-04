@@ -13,10 +13,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
 import winreg
 from dataclasses import dataclass, field
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +114,8 @@ def _scan_firewall() -> VulnItem | None:
 def _scan_guest() -> VulnItem | None:
     """Guest 账户状态。"""
     out = _run(["net", "user", "guest"], timeout=5.0)
-    if "Account active" in out or "帐户启用" in out:
+    # 精确匹配 "Account active  Yes" / "帐户启用  Yes"（中英文系统）
+    if re.search(r"Account active\s+Yes", out) or re.search(r"帐户启用\s+Yes", out):
         return VulnItem("vuln_guest", "Guest 账户已启用", "Guest（来宾）账户处于启用状态，可能被攻击者利用获得低权限访问",
                         "medium", "以管理员运行命令提示符：net user guest /active:no，禁用来宾账户")
     return None
@@ -141,8 +144,6 @@ def _scan_shares() -> VulnItem | None:
 
 def _scan_autoruns() -> VulnItem | None:
     """启动项检测：注册表 Run 键 + 启动文件夹。"""
-    import os
-
     suspicious: list[str] = []
     # 注册表自启动键（HKCU 和 HKLM）
     run_keys = [
@@ -165,10 +166,17 @@ def _scan_autoruns() -> VulnItem | None:
                                 "chrome", "firefox", "edge", "office", "adobe")):
                             i += 1
                             continue
+                        # 恶意特征：排除合法 rundll32.exe（仅匹配伪造变体）
+                        is_sys_rundll = ("\\system32\\rundll32.exe" in low_val or
+                                          "\\syswow64\\rundll32.exe" in low_val)
+                        if is_sys_rundll:
+                            i += 1
+                            continue
                         if any(bad in low_val + low_name for bad in
-                               ("svch0st", "expl0rer", "rundll", "temp\\", "\\appdata\\local\\temp",
+                               ("svch0st", "expl0rer", "rundll.exe", "rundl32", "rundlll",
+                                "temp\\", "\\appdata\\local\\temp",
                                 "powershell -enc", "wscript", "cscript", ".vbs", ".bat", ".ps1",
-                                "startup", "crack", "keygen", "loader", "activator")):
+                                "crack", "keygen", "loader", "activator")):
                             suspicious.append(f"启动项「{name}」→ {value[:60]}")
                         i += 1
                     except OSError:
@@ -177,13 +185,22 @@ def _scan_autoruns() -> VulnItem | None:
             pass
 
     # 启动文件夹
+    safe_names = ("onenote", "one note", "microsoft", "office", "chrome",
+                  "firefox", "edge", "wechat", "qq", "dingtalk", "wps",
+                  "dropbox", "skype", "teams", "slack", "steam", "epic",
+                  "discord", "cloud", "syncthing", "intel", "nvidia", "amd")
     for env in ("APPDATA", "PROGRAMDATA"):
         try:
             startup_dir = Path(os.environ.get(env, "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
             if startup_dir.exists():
                 for f in startup_dir.iterdir():
-                    if f.suffix.lower() in (".lnk", ".exe", ".bat", ".cmd", ".vbs", ".ps1"):
-                        suspicious.append(f"启动文件夹 → {f.name}")
+                    if f.suffix.lower() not in (".lnk", ".exe", ".bat", ".cmd", ".vbs", ".ps1"):
+                        continue
+                    fname = f.stem.lower()
+                    # 已知安全软件豁免
+                    if any(s in fname for s in safe_names):
+                        continue
+                    suspicious.append(f"启动文件夹 → {f.name}")
         except Exception:  # noqa: BLE001
             pass
 
@@ -197,7 +214,7 @@ def _scan_hosts() -> VulnItem | None:
     """HOSTS 文件劫持检测。"""
     hosts_path = Path("C:/Windows/System32/drivers/etc/hosts")
     try:
-        content = hosts_path.read_text(encoding="utf-8", errors="ignore")
+        content = hosts_path.read_text(encoding="utf-8-sig", errors="ignore")
     except Exception:  # noqa: BLE001
         return None
     hijack: list[str] = []
@@ -216,16 +233,116 @@ def _scan_hosts() -> VulnItem | None:
     return None
 
 
+def _scan_runonce() -> VulnItem | None:
+    """RunOnce 注册表键检测（常被恶意软件用于一次性持久化）。"""
+    runonce_keys = [
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"),
+    ]
+    suspicious: list[str] = []
+    for hkey, path in runonce_keys:
+        try:
+            with winreg.OpenKey(hkey, path) as key:
+                i = 0
+                while True:
+                    try:
+                        name, value, _ = winreg.EnumValue(key, i)
+                        low_val = str(value).lower()
+                        if any(bad in low_val for bad in
+                               ("powershell -enc", "wscript", "cscript", ".vbs", ".bat",
+                                "temp\\", "\\appdata\\local\\temp", "cmd.exe /c")):
+                            suspicious.append(f"RunOnce「{name}」→ {str(value)[:80]}")
+                        i += 1
+                    except OSError:
+                        break
+        except OSError:
+            pass
+    if suspicious:
+        return VulnItem("vuln_runonce", "发现可疑 RunOnce 项",
+                        f"注册表 RunOnce 中存在 {len(suspicious)} 条可疑条目：{'; '.join(suspicious[:2])}。恶意软件常用 RunOnce 实现一次性自启动",
+                        "high", "打开注册表编辑器删除对应 RunOnce 键值，或运行 Autoruns 工具检查")
+    return None
+
+
+def _scan_scheduled_tasks() -> VulnItem | None:
+    """计划任务检测：查找可疑的 schtasks 条目。
+
+    注意：schtasks /fo csv 输出的第一列是【机器名】，任务名在第二列。
+    只对非系统目录的任务执行命令做关键词匹配，避免误报。
+    """
+    out = _run(["schtasks", "/query", "/fo", "csv", "/v"], timeout=8.0)
+    if not out.strip():
+        return None
+
+    import csv as _csv
+    import io as _io
+
+    suspicious: list[str] = []
+    try:
+        rows = list(_csv.reader(_io.StringIO(out)))
+    except Exception:
+        return None
+
+    for row in rows[1:]:  # 跳过表头
+        if len(row) < 2:
+            continue
+        task_name = row[1].strip().strip('"')  # 第 2 列 = 任务名
+        # 系统任务豁免（Microsoft 官方任务）
+        if task_name.lower().startswith(("\\microsoft\\", "\\windows\\")):
+            continue
+        # 拼接任务名+命令供匹配
+        cmd = " ".join(row[4:6]).lower()  # 命令列 + 启动目录
+        haystack = f"{task_name.lower()} {cmd}"
+
+        if any(bad in haystack for bad in
+               ("powershell -enc", "-encodedcommand", "wscript", "cscript",
+                ".vbs", ".bat", "\\temp\\", "\\appdata\\local\\temp",
+                "cmd.exe /c", "downloader", "backdoor", "trojan",
+                "mshta", "regsvr32 /s", "certutil -urlcache")):
+            suspicious.append(task_name[:60])
+
+    if suspicious:
+        return VulnItem("vuln_task", "发现可疑计划任务",
+                        f"检测到 {len(suspicious)} 条可疑计划任务：{'; '.join(suspicious[:3])}。APT 和勒索软件常通过计划任务维持持久化",
+                        "critical", "运行 taskschd.msc 打开任务计划程序，禁用可疑任务；或运行 schtasks /Delete 删除")
+    return None
+
+
+def _scan_wmi_events() -> VulnItem | None:
+    """WMI 事件订阅检测（文件无持久化，高级 APT 手法）。"""
+    out = _run(["powershell", "-NoProfile", "-Command",
+                "Get-WmiObject -Namespace 'root\\Subscription' -Class "
+                "__EventFilter,__EventConsumer,__FilterToConsumerBinding 2>$null | "
+                "Select-Object __CLASS,Name,CommandLine | ConvertTo-Json -Compress"],
+               timeout=8.0)
+    if not out.strip() or "null" in out.lower():
+        return None
+    try:
+        import json as _json
+        items = _json.loads(out)
+        if not isinstance(items, list):
+            items = [items] if items else []
+        if items:
+            names = [i.get("Name", "未知") for i in items[:3]]
+            return VulnItem("vuln_wmi", "检测到 WMI 事件订阅",
+                            f"发现 {len(items)} 个 WMI 持久化订阅：{', '.join(names)}。这是高级 APT 常用无文件持久化技术",
+                            "critical",
+                            "以管理员运行 PowerShell：Get-WmiObject -Namespace root\\Subscription -Class __EventFilter | Remove-WmiObject")
+    except Exception:
+        pass
+    return None
+
+
 def scan_vulnerabilities() -> list[VulnItem]:
     """执行全部漏洞检测，返回发现的风险项（0 风险返回空列表）。"""
     items: list[VulnItem] = []
     scanners = [_scan_patches, _scan_smb1, _scan_firewall, _scan_guest, _scan_uac, _scan_shares,
-                _scan_autoruns, _scan_hosts]
+                _scan_autoruns, _scan_hosts, _scan_runonce, _scan_scheduled_tasks, _scan_wmi_events]
     for fn in scanners:
         try:
             item = fn()
-            if item and item.level in ("high", "critical", "medium"):
-                items.append(item)
+            if item:
+                items.append(item)  # 包含 low 级别（如补丁良好确认信息）
         except Exception as exc:  # noqa: BLE001
             logger.debug("漏洞检测项异常 %s: %s", fn.__name__, exc)
     return items

@@ -3,7 +3,7 @@ chcp 65001 >nul
 title OpenGuardian
 echo.
 echo   ╔══════════════════════════════════╗
-echo   ║   OpenGuardian v0.5.8          ║
+echo   ║   OpenGuardian v0.6.0          ║
 echo   ║   AI 个人数字安全服务平台       ║
 echo   ╚══════════════════════════════════╝
 echo.

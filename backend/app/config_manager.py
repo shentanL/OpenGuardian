@@ -9,6 +9,7 @@ import json
 import logging
 from pathlib import Path
 
+from .crypto_storage import decrypt_api_key, encrypt_api_key, migrate_to_encrypted
 from .llm.providers import DEFAULT_PROVIDER, PROVIDERS
 
 logger = logging.getLogger(__name__)
@@ -41,13 +42,28 @@ def get_provider() -> str:
 
 
 def get_api_key() -> str:
-    """获取 API Key（config.json → .env 环境变量 双重回退）。"""
+    """获取 API Key（config.json → .env 环境变量 → 自动迁移明文为加密）。"""
     cfg = _read()
-    key = cfg.get("api_key") or ""
-    if key:
-        return key
+    stored = cfg.get("api_key") or ""
+    if stored:
+        # 首次读取时自动将明文迁移为加密存储
+        if not stored.startswith("og_enc_v1:"):
+            encrypted, _ = encrypt_api_key(stored)
+            if encrypted:
+                cfg["api_key"] = encrypted
+                _write(cfg)
+                logger.info("API Key 已自动从明文升级为加密存储")
+                return stored  # 返回原始明文
+        else:
+            decrypted = decrypt_api_key(stored)
+            if decrypted:
+                return decrypted
+            # 解密失败（换了机器/重装系统）→ 密钥已失效
+            logger.warning("API Key 解密失败（机器绑定密钥不匹配），请重新配置")
+            return ""
     # 回退：从 .env 读取
     import os as _os
+    key = ""
     try:
         from dotenv import load_dotenv
         # frozen 时 .env 在 _MEIPASS/backend/，dev 时在 backend/
@@ -61,7 +77,7 @@ def get_api_key() -> str:
             key = _os.getenv("DEEPSEEK_API_KEY") or ""
             if key:
                 cfg["api_key"] = key
-                Path(str(CONFIG_PATH)).write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+                CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception:
         pass
     return key
@@ -98,15 +114,35 @@ def is_configured() -> bool:
 
 
 def save_config(provider: str, api_key: str = "", base_url: str = "", model: str = "") -> dict:
-    """保存配置到 config.json。"""
+    """保存配置到 config.json。
+
+    api_key 为空字符串时保留旧值（用于设置面板留空不变更的场景）。
+    base_url / model 同理。
+    """
+    old = _read()
     pdef = PROVIDERS.get(provider, PROVIDERS[DEFAULT_PROVIDER])
+    # 仅当提供商相同时才保留旧 Key（防止 DeepSeek Key 被写入 OpenAI 配置）
+    preserved_key = old.get("api_key", "") if old.get("provider") == provider else ""
+    # 加密存储 API Key
+    final_key = ""
+    if api_key.strip():
+        encrypted, _ = encrypt_api_key(api_key.strip())
+        final_key = encrypted or api_key.strip()  # 加密失败则回退明文
+    else:
+        final_key = preserved_key  # 保留旧值（已加密或明文）
     cfg = {
         "provider": provider,
-        "api_key": api_key.strip(),
+        "api_key": final_key,
         "base_url": base_url.strip() or pdef.get("base_url", ""),
         "model": model.strip() or pdef.get("default_model", ""),
     }
     _write(cfg)
+    # 使 LLM 客户端失效，下次请求自动使用新配置
+    try:
+        from .llm.client import invalidate_llm_client
+        invalidate_llm_client()
+    except Exception:
+        pass
     return {"ok": True, **cfg}
 
 

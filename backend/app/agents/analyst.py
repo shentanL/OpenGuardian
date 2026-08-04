@@ -115,8 +115,8 @@ class AnalystAgent(BaseAgent):
                 capture_output=True, text=True, errors="replace", timeout=8,
             )
             out = r.stdout.lower()
-            # 最小密码长度
-            m = re.search(r"minimum password length[:\s]*(\d+)", out)
+            # 最小密码长度（中英双语匹配）
+            m = re.search(r"(?:minimum password length|密码长度最小值|密码最小长度)[:\s]*(\d+)", out)
             if m and int(m.group(1)) < 8:
                 risks.append(RiskItem(
                     item_type="asset", name="密码最小长度不足",
@@ -124,8 +124,8 @@ class AnalystAgent(BaseAgent):
                     level=RiskLevel.MEDIUM,
                     suggestion="运行 gpedit.msc → 计算机配置→Windows 设置→安全设置→账户策略→密码策略，设置最小密码长度 ≥8",
                 ))
-            # 密码最长使用期限
-            m2 = re.search(r"maximum password age[:\s]*(\d+)", out)
+            # 密码最长使用期限（中英双语匹配）
+            m2 = re.search(r"(?:maximum password age|密码最长使用期限|密码最长存留期)[:\s]*(\d+)", out)
             if m2 and int(m2.group(1)) == 42:
                 pass  # 默认值
             elif m2 and int(m2.group(1)) > 90:
@@ -135,8 +135,8 @@ class AnalystAgent(BaseAgent):
                     level=RiskLevel.LOW,
                     suggestion="在本地安全策略中设置密码最长使用期限 ≤90 天",
                 ))
-            # 锁定阈值
-            m3 = re.search(r"lockout threshold[:\s]*(\d+)", out)
+            # 锁定阈值（中英双语匹配）
+            m3 = re.search(r"(?:lockout threshold|锁定阈值|帐户锁定阈值)[:\s]*(\d+)", out)
             if m3 and int(m3.group(1)) == 0:
                 risks.append(RiskItem(
                     item_type="asset", name="账户锁定未启用",
@@ -144,8 +144,8 @@ class AnalystAgent(BaseAgent):
                     level=RiskLevel.MEDIUM,
                     suggestion="设置账户锁定阈值：5 次错误后锁定 30 分钟（net accounts /lockoutthreshold:5）",
                 ))
-            # 密码历史
-            m4 = re.search(r"length of password history maintained[:\s]*(\d+)", out)
+            # 密码历史（中英双语匹配）
+            m4 = re.search(r"(?:length of password history maintained|强制密码历史|密码历史记录长度)[:\s]*(\d+)", out)
             if m4 and int(m4.group(1)) == 0:
                 risks.append(RiskItem(
                     item_type="asset", name="密码历史未启用",
@@ -153,8 +153,8 @@ class AnalystAgent(BaseAgent):
                     level=RiskLevel.LOW,
                     suggestion="设置强制密码历史 ≥5（禁止重复使用最近 5 个密码）",
                 ))
-            # 最短使用期限
-            m5 = re.search(r"minimum password age[:\s]*(\d+)", out)
+            # 最短使用期限（中英双语匹配）
+            m5 = re.search(r"(?:minimum password age|密码最短使用期限|密码最短存留期)[:\s]*(\d+)", out)
             if m5 and int(m5.group(1)) == 0:
                 risks.append(RiskItem(
                     item_type="asset", name="密码最短使用期限为 0",
@@ -184,22 +184,7 @@ class AnalystAgent(BaseAgent):
         except OSError:
             pass
 
-        # 检查 Guest 账户
-        try:
-            r = subprocess.run(
-                ["net", "user", "guest"],
-                capture_output=True, text=True, errors="replace", timeout=5,
-            )
-            if "account active" in r.stdout.lower() and "yes" in r.stdout.lower():
-                risks.append(RiskItem(
-                    item_type="asset", name="Guest 账户已启用",
-                    detail="来宾账户启用——未授权用户可能通过 Guest 访问系统",
-                    level=RiskLevel.MEDIUM,
-                    suggestion="运行 net user guest /active:no 禁用 Guest 账户",
-                ))
-        except Exception:
-            pass
-
+        # Guest 账户检查已由 vuln.py 的 _scan_guest 统一处理，避免重复告警
         return risks
     def _check_password(self, pwd: str) -> list[RiskItem]:
         """密码强度评估：zxcvbn（Dropbox 开源，714⭐ GitHub）。
@@ -249,6 +234,26 @@ class AnalystAgent(BaseAgent):
                     level=RiskLevel.CRITICAL,
                     suggestion="立即更换为 12 位以上、包含大小写字母+数字+符号的强密码",
                 ))
+            else:
+                # zxcvbn 未安装时做基础规则检测
+                basic_issues = []
+                if len(pwd) < 8:
+                    basic_issues.append("长度不足 8 位")
+                if len(pwd) < 12:
+                    basic_issues.append("建议至少 12 位")
+                has_upper = any(c.isupper() for c in pwd)
+                has_lower = any(c.islower() for c in pwd)
+                has_digit = any(c.isdigit() for c in pwd)
+                has_special = any(not c.isalnum() for c in pwd)
+                if sum([has_upper, has_lower, has_digit, has_special]) < 3:
+                    basic_issues.append("字符类型单一（建议混合大小写+数字+符号）")
+                if basic_issues:
+                    risks.append(RiskItem(
+                        item_type="asset", name="密码较弱",
+                        detail="；".join(basic_issues),
+                        level=RiskLevel.MEDIUM if len(pwd) >= 8 else RiskLevel.HIGH,
+                        suggestion="使用 12 位以上、包含大小写字母+数字+符号的强密码",
+                    ))
         return risks
 
     # ---- 安全习惯 ----

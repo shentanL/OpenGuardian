@@ -431,7 +431,7 @@ MALWARE_PATTERNS_EXT: list[tuple[str, str, str, RiskLevel]] = [
     ("rat.exe", "远控木马", "远控木马可执行文件", RiskLevel.CRITICAL),
     ("server.exe", "远控服务端", "远控木马服务端", RiskLevel.CRITICAL),
     ("client.exe", "远控客户端", "远控木马客户端", RiskLevel.CRITICAL),
-    ("shell.exe", "反弹 Shell", "反弹 shell 程序", RiskLevel.CRITICAL),
+    ("\\shell.exe", "反弹 Shell", "独立的 shell.exe 可执行文件（非 powershell）", RiskLevel.CRITICAL),
     ("reverse shell", "反弹 Shell", "反弹 shell 工具", RiskLevel.CRITICAL),
     ("bind shell", "绑定 Shell", "绑定 shell 工具", RiskLevel.CRITICAL),
     ("payload", "攻击载荷", "攻击载荷通用特征", RiskLevel.HIGH),

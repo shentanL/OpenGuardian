@@ -168,6 +168,12 @@ SYSTEM_PROCESSES = {
     "winlogon.exe", "services.exe", "lsass.exe", "smss.exe", "explorer.exe",
     "dwm.exe", "fontdrvhost.exe", "Registry", "Memory Compression",
     "conhost.exe", "sihost.exe", "taskhostw.exe", "dllhost.exe",
+    # 系统工具（合法，即使特征库命中也不报警）
+    "powershell.exe", "cmd.exe", "reg.exe", "regedit.exe", "taskmgr.exe",
+    "msiexec.exe", "rundll32.exe", "wscript.exe", "cscript.exe", "schtasks.exe",
+    "whoami.exe", "netstat.exe", "net.exe", "ipconfig.exe", "ping.exe",
+    "nslookup.exe", "tasklist.exe", "wmic.exe", "systeminfo.exe", "gpupdate.exe",
+    "python.exe", "pythonw.exe", "node.exe", "npm.exe",
 }
 
 # 用户白名单（SQLite 持久化；此处为内存兜底）
@@ -277,11 +283,11 @@ class DetectorAgent(BaseAgent):
 
                     # 1.5) 病毒库哈希命中（MalwareBazaar 真实恶意样本）
                     try:
-                        from ..kb.virus_hashes import cached_hashes, file_sha256
+                        from ..kb.virus_hashes import quick_check, file_sha256
 
-                        if exe and cached_hashes():
+                        if exe:
                             fhash = file_sha256(exe)
-                            if fhash and fhash in cached_hashes():
+                            if fhash and quick_check(fhash):  # Bloom 预筛 + SET 确认
                                 risks.append(RiskItem(
                                     item_type="malware_hash",
                                     name=name,

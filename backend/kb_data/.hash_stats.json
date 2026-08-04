@@ -1,0 +1,18 @@
+{
+  "total": 5795,
+  "added": 0,
+  "sources": {
+    "eset": {
+      "ok": true,
+      "count": 5795,
+      "updated": "2026-08-04 13:25:48"
+    },
+    "malwarebazaar": {
+      "ok": true,
+      "count": 0,
+      "updated": "2026-08-04 13:25:48"
+    }
+  },
+  "last_update": "2026-08-04 13:25:48",
+  "bloom_size_kb": 117.0
+}

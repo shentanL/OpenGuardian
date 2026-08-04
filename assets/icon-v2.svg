@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- OpenGuardian 品牌图标 v2 — 盾牌 + AI 神经网络 + 荧光绿 -->
+  <defs>
+    <!-- 荧光绿发光 -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-strong">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- 渐变 -->
+    <linearGradient id="shield-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#76b900"/>
+      <stop offset="50%" stop-color="#bff230"/>
+      <stop offset="100%" stop-color="#76b900"/>
+    </linearGradient>
+    <linearGradient id="shield-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0d0d"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景圆 -->
+  <circle cx="128" cy="128" r="124" fill="url(#shield-bg)" stroke="#1a1a1a" stroke-width="2"/>
+  <circle cx="128" cy="128" r="120" fill="none" stroke="#2a2a2a" stroke-width="0.5" stroke-dasharray="8 4"/>
+
+  <!-- 外盾轮廓 -->
+  <path d="M128 20 L218 50 L218 130 C218 190 170 228 128 244 C86 228 38 190 38 130 L38 50 Z"
+        fill="#0a0a0a" stroke="url(#shield-grad)" stroke-width="4" filter="url(#glow)"/>
+
+  <!-- 内盾 -->
+  <path d="M128 45 L200 70 L200 130 C200 178 162 210 128 224 C94 210 56 178 56 130 L56 70 Z"
+        fill="#0d0d0d" stroke="#76b900" stroke-width="2" opacity="0.6"/>
+
+  <!-- 中央：AI 神经网络节点（4 节点 + 连线） -->
+  <g filter="url(#glow-strong)">
+    <!-- 中心节点（大脑） -->
+    <circle cx="128" cy="120" r="10" fill="#76b900"/>
+    <circle cx="128" cy="120" r="14" fill="none" stroke="#bff230" stroke-width="1" opacity="0.5"/>
+
+    <!-- 上节点 -->
+    <circle cx="128" cy="80" r="5" fill="#bff230"/>
+    <line x1="128" y1="110" x2="128" y2="85" stroke="#76b900" stroke-width="1.5" opacity="0.8"/>
+
+    <!-- 左节点 -->
+    <circle cx="100" cy="120" r="5" fill="#bff230"/>
+    <line x1="118" y1="120" x2="105" y2="120" stroke="#76b900" stroke-width="1.5" opacity="0.8"/>
+
+    <!-- 右节点 -->
+    <circle cx="156" cy="120" r="5" fill="#bff230"/>
+    <line x1="138" y1="120" x2="151" y2="120" stroke="#76b900" stroke-width="1.5" opacity="0.8"/>
+
+    <!-- 下节点 -->
+    <circle cx="128" cy="160" r="5" fill="#bff230"/>
+    <line x1="128" y1="130" x2="128" y2="155" stroke="#76b900" stroke-width="1.5" opacity="0.8"/>
+
+    <!-- 上左节点 -->
+    <circle cx="102" cy="88" r="3" fill="#3f8500"/>
+    <line x1="128" y1="112" x2="105" y2="92" stroke="#76b900" stroke-width="0.8" opacity="0.4"/>
+
+    <!-- 上右节点 -->
+    <circle cx="154" cy="88" r="3" fill="#3f8500"/>
+    <line x1="128" y1="112" x2="151" y2="92" stroke="#76b900" stroke-width="0.8" opacity="0.4"/>
+  </g>
+
+  <!-- 底部：对钩（安全确认） -->
+  <path d="M108 182 L122 196 L152 164" fill="none" stroke="#76b900" stroke-width="4"
+        stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" opacity="0.8"/>
+</svg>

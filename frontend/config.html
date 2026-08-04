@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenGuardian · 初始配置</title>
+  <title>OpenGuardian · 设置</title>
   <link rel="stylesheet" href="/static/config.css">
   <script src="/static/icons.js" defer></script>
   <script src="/static/background.js" defer></script>
@@ -11,216 +11,165 @@
 <body>
 <canvas id="bg-canvas" class="bg-canvas"></canvas>
 
-<div class="config-container">
-  <div class="config-card">
-    <div class="cc-header">
-      <span class="cc-logo"><svg class="ic"><use href="#ic-shield"/></svg></span>
-      <h1>OpenGuardian</h1>
-      <p class="cc-sub">AI 个人数字安全服务平台 · 首次配置</p>
+<div class="settings-container">
+  <!-- 侧边 Tab 栏 -->
+  <nav class="settings-nav">
+    <div class="sn-brand">
+      <svg class="ic"><use href="#ic-shield"/></svg>
+      <span>OpenGuardian</span>
     </div>
-
-    <div class="cc-section">
-      <div class="cc-label">
-        <svg class="ic"><use href="#ic-bolt"/></svg>
-        <span>选择 AI 服务提供商</span>
-      </div>
-      <select id="provider-select" class="cc-select">
-        <option value="">加载中…</option>
-      </select>
-      <div id="provider-desc" class="cc-hint"></div>
-    </div>
-
-    <div class="cc-section" id="api-key-section">
-      <div class="cc-label">
-        <svg class="ic"><use href="#ic-lock"/></svg>
-        <span>API Key</span>
-      </div>
-      <div class="cc-input-wrap">
-        <input id="api-key" type="password" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
-               autocomplete="off" spellcheck="false">
-        <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
-      </div>
-      <div class="cc-hint" id="key-hint">
-        如何获取？访问对应提供商的官网，注册后在 API 页面创建 Key。
-        <br>Key 仅存储在你本机，不会上传到任何云端。
-      </div>
-    </div>
-
-    <div class="cc-section" id="custom-section" style="display:none">
-      <div class="cc-label">
-        <svg class="ic"><use href="#ic-net"/></svg>
-        <span>自定义 API 地址（可选）</span>
-      </div>
-      <div class="cc-input-wrap">
-        <input id="custom-url" type="text" placeholder="https://your-api.com/v1"
-               autocomplete="off" spellcheck="false">
-      </div>
-      <div class="cc-hint">输入与 OpenAI 兼容的 API 端点地址</div>
-    </div>
-
-    <div class="cc-section">
-      <div class="cc-label">
-        <svg class="ic"><use href="#ic-cpu"/></svg>
-        <span>模型选择</span>
-        <span style="font-size:10px;color:var(--gray-500);margin-left:auto">下拉选择或手动输入</span>
-      </div>
-      <select id="model-select" class="cc-select">
-        <option value="">使用默认模型</option>
-      </select>
-      <div class="cc-input-wrap" style="margin-top:6px">
-        <input id="model-custom" type="text" placeholder="或手动输入模型名（如 deepseek-v4-pro）"
-               autocomplete="off" spellcheck="false" style="font-size:11px; padding:8px 12px">
-      </div>
-    </div>
-
-    <div class="cc-section">
-      <div class="cc-label">
-        <svg class="ic"><use href="#ic-check"/></svg>
-        <span>使用须知</span>
-      </div>
-      <div class="cc-checklist">
-        <div class="cc-item">✅ 所有数据存储在本地 SQLite，不会上传云端</div>
-        <div class="cc-item">✅ 源码完全开放，可自行审计安全</div>
-        <div class="cc-item">✅ 首次启动会自动拉取最新威胁情报</div>
-      </div>
-    </div>
-
-    <button id="btn-start" class="cc-btn" disabled>
-      <svg class="ic"><use href="#ic-send"/></svg>
-      <span>保存并开始使用</span>
+    <button class="sn-tab active" data-tab="provider">
+      <svg class="ic"><use href="#ic-bolt"/></svg> AI 服务
     </button>
+    <button class="sn-tab" data-tab="threats">
+      <svg class="ic"><use href="#ic-radar"/></svg> 威胁情报
+    </button>
+    <button class="sn-tab" data-tab="whitelist">
+      <svg class="ic"><use href="#ic-check"/></svg> 白名单
+    </button>
+    <button class="sn-tab" data-tab="virusdb">
+      <svg class="ic"><use href="#ic-bolt"/></svg> 病毒库
+    </button>
+    <button class="sn-tab" data-tab="about">
+      <svg class="ic"><use href="#ic-book"/></svg> 关于
+    </button>
+    <div class="sn-footer">
+      <a href="/" class="sn-back">
+        <svg class="ic"><use href="#ic-chat"/></svg> 返回助手
+      </a>
+    </div>
+  </nav>
 
-    <div id="cc-error" class="cc-error hidden"></div>
-  </div>
+  <!-- 内容区 -->
+  <main class="settings-main">
+
+    <!-- Tab 1: AI 服务 -->
+    <section class="settings-panel active" id="panel-provider">
+      <h2>AI 服务配置</h2>
+      <p class="panel-sub">选择 AI 提供商并配置 API Key</p>
+
+      <div class="form-group">
+        <label>提供商</label>
+        <select id="provider-select" class="cc-select"></select>
+        <div id="provider-desc" class="form-hint"></div>
+      </div>
+
+      <div class="form-group" id="api-key-group">
+        <label>API Key</label>
+        <div class="cc-input-wrap">
+          <input id="api-key" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" spellcheck="false">
+          <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
+        </div>
+        <div class="form-hint" id="key-hint"></div>
+      </div>
+
+      <div class="form-group" id="custom-url-group" style="display:none">
+        <label>自定义 API 地址</label>
+        <input id="custom-url" type="text" placeholder="https://your-api.com" class="cc-input-text" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label>模型 <span class="label-tip">下拉选择或手动输入</span></label>
+        <select id="model-select" class="cc-select"></select>
+        <input id="model-custom" type="text" placeholder="或手动输入模型名…" class="cc-input-text" style="margin-top:6px">
+      </div>
+
+      <button id="btn-save-provider" class="cc-btn">
+        <svg class="ic"><use href="#ic-send"/></svg> 保存 AI 设置
+      </button>
+      <div id="provider-msg" class="form-msg hidden"></div>
+    </section>
+
+    <!-- Tab 2: 威胁情报 -->
+    <section class="settings-panel" id="panel-threats">
+      <h2>威胁情报管理</h2>
+      <p class="panel-sub">多源威胁情报 Feed 摄入状态与手动控制</p>
+
+      <div class="kb-actions">
+        <button id="btn-refresh-kb" class="cc-btn-outline">
+          <svg class="ic"><use href="#ic-scan"/></svg> 立即刷新所有 Feed
+        </button>
+        <span id="kb-refresh-msg" class="inline-msg hidden"></span>
+      </div>
+
+      <div class="kb-stats-row" id="kb-stats">
+        <div class="kb-stat-card"><div class="kb-num" id="kb-domains">--</div><div class="kb-lbl">恶意域名</div></div>
+        <div class="kb-stat-card"><div class="kb-num" id="kb-ips">--</div><div class="kb-lbl">恶意 IP</div></div>
+        <div class="kb-stat-card"><div class="kb-num" id="kb-hashes">--</div><div class="kb-lbl">病毒哈希</div></div>
+        <div class="kb-stat-card"><div class="kb-num" id="kb-feeds">--</div><div class="kb-lbl">Feed 源</div></div>
+      </div>
+
+      <h3>Feed 源状态</h3>
+      <div id="feed-list" class="feed-list"></div>
+
+      <div class="kb-last-update" id="kb-last">上次更新：--</div>
+    </section>
+
+    <!-- Tab 3: 白名单 -->
+    <section class="settings-panel" id="panel-whitelist">
+      <h2>进程白名单</h2>
+      <p class="panel-sub">白名单中的进程在检测时将被跳过，不会被标记为风险</p>
+
+      <div class="wl-add-row">
+        <input id="wl-input" type="text" placeholder="输入进程名（如 my-dev-tool.exe）" class="cc-input-text" autocomplete="off">
+        <button id="btn-wl-add" class="cc-btn-sm">
+          <svg class="ic"><use href="#ic-check"/></svg> 添加
+        </button>
+      </div>
+
+      <div id="wl-list" class="wl-list"></div>
+    </section>
+
+    <!-- Tab 4: 病毒库 -->
+    <section class="settings-panel" id="panel-virusdb">
+      <h2>病毒库管理</h2>
+      <p class="panel-sub">恶意软件哈希签名数据库 — 多源聚合 + Bloom 加速</p>
+
+      <div class="kb-stats-row" id="virus-stats">
+        <div class="kb-stat-card"><div class="kb-num" id="vdb-total">--</div><div class="kb-lbl">恶意哈希总数</div></div>
+        <div class="kb-stat-card"><div class="kb-num" id="vdb-bloom">--</div><div class="kb-lbl">Bloom 过滤器</div></div>
+        <div class="kb-stat-card"><div class="kb-num" id="vdb-sources">--</div><div class="kb-lbl">数据源</div></div>
+        <div class="kb-stat-card"><div class="kb-num" id="vdb-updated">--</div><div class="kb-lbl">上次更新</div></div>
+      </div>
+
+      <h3>数据源状态</h3>
+      <div id="virus-source-list" class="feed-list"></div>
+
+      <div class="kb-actions" style="margin-top:16px">
+        <button id="btn-refresh-vdb" class="cc-btn-outline">
+          <svg class="ic"><use href="#ic-scan"/></svg> 立即更新病毒库
+        </button>
+        <span id="vdb-refresh-msg" class="inline-msg hidden"></span>
+      </div>
+
+      <div class="kb-last-update" id="vdb-note" style="margin-top:12px">
+        病毒库使用 Bloom 过滤器加速查询——99% 的正常进程在 O(1) 内排除，仅命中候选才查完整 SET。
+      </div>
+    </section>
+
+    <!-- Tab 5: 关于 -->
+    <section class="settings-panel" id="panel-about">
+      <h2>关于 OpenGuardian</h2>
+      <p class="panel-sub">AI 驱动的个人数字安全服务平台</p>
+
+      <div class="about-grid" id="about-info">
+        <div class="about-item"><span class="about-key">版本</span><span class="about-val" id="about-version">--</span></div>
+        <div class="about-item"><span class="about-key">LLM 模型</span><span class="about-val" id="about-model">--</span></div>
+        <div class="about-item"><span class="about-key">LLM 提供商</span><span class="about-val" id="about-provider">--</span></div>
+        <div class="about-item"><span class="about-key">数据库</span><span class="about-val">SQLite (WAL)</span></div>
+        <div class="about-item"><span class="about-key">检测引擎</span><span class="about-val">8 模块 + Verifier + Reflector</span></div>
+        <div class="about-item"><span class="about-key">威胁情报</span><span class="about-val">5 Feed 源 · 每 6h 自动更新</span></div>
+      </div>
+
+      <div class="about-footer">
+        <p>温州科技职业学院 · 数智技术学院</p>
+        <p>"导师+项目+团队"创新项目（2026-2027）</p>
+      </div>
+    </section>
+
+  </main>
 </div>
 
-<script>
-const apiInput = document.getElementById("api-key");
-const btnStart = document.getElementById("btn-start");
-const toggleBtn = document.getElementById("toggle-key");
-const errorEl = document.getElementById("cc-error");
-const providerSel = document.getElementById("provider-select");
-const modelSel = document.getElementById("model-select");
-const customSection = document.getElementById("custom-section");
-const customUrl = document.getElementById("custom-url");
-const apiKeySection = document.getElementById("api-key-section");
-const keyHint = document.getElementById("key-hint");
-const providerDesc = document.getElementById("provider-desc");
-
-let providers = [];
-let currentProvider = null;
-
-// 加载配置和提供商列表
-async function checkConfig() {
-  try {
-    const resp = await fetch("/api/config");
-    const data = await resp.json();
-    providers = data.providers || [];
-
-    // 渲染提供商选择器
-    providerSel.innerHTML = providers.map((p) =>
-      `<option value="${p.key}" ${p.key === data.provider ? "selected" : ""}>${p.name}</option>`
-    ).join("");
-    if (data.provider) {
-      currentProvider = providers.find((p) => p.key === data.provider);
-      updateProviderUI(currentProvider);
-    }
-    if (data.configured) {
-      window.location.href = "/";
-      return;
-    }
-  } catch (err) {
-    console.warn("配置检查失败:", err);
-  }
-}
-
-function updateProviderUI(p) {
-  if (!p) return;
-  currentProvider = p;
-  providerDesc.textContent = p.description || "";
-  // 更新模型列表
-  const models = p.models || [];
-  modelSel.innerHTML = `<option value="">默认模型（${p.default_model || "自动"}）</option>` +
-    models.map((m) => `<option value="${m}">${m}</option>`).join("");
-  // Ollama 不需要 API Key
-  if (p.key === "ollama") {
-    apiKeySection.style.display = "none";
-  } else {
-    apiKeySection.style.display = "";
-    keyHint.innerHTML = `如何获取？访问 ${p.name} 官网，注册后在 API 页面创建 Key。<br>Key 仅存储在你本机，不会上传到任何云端。`;
-  }
-  // 自定义显示地址输入
-  customSection.style.display = p.key === "custom" ? "" : "none";
-}
-
-providerSel?.addEventListener("change", () => {
-  const p = providers.find((x) => x.key === providerSel.value);
-  updateProviderUI(p);
-});
-
-// 显示/隐藏 Key
-toggleBtn?.addEventListener("click", () => {
-  apiInput.type = apiInput.type === "password" ? "text" : "password";
-});
-
-// 输入检测
-apiInput?.addEventListener("input", () => {
-  const val = apiInput.value.trim();
-  const needsKey = providerSel.value !== "ollama";
-  const valid = !needsKey || (val.length >= 10);
-  btnStart.disabled = !valid;
-  btnStart.querySelector("span").textContent =
-    valid ? "保存并开始使用" : (val ? "请输入有效的 API Key" : "请输入 API Key");
-  errorEl.classList.add("hidden");
-});
-
-// 保存配置
-btnStart?.addEventListener("click", async () => {
-  const provider = providerSel.value;
-  if (!provider) {
-    errorEl.textContent = "请选择 AI 服务提供商";
-    errorEl.classList.remove("hidden");
-    return;
-  }
-  const key = apiInput.value.trim();
-  const needsKey = provider !== "ollama";
-  if (needsKey && !key) {
-    errorEl.textContent = "请输入 API Key（Ollama 本地模型除外）";
-    errorEl.classList.remove("hidden");
-    return;
-  }
-  btnStart.disabled = true;
-  btnStart.querySelector("span").textContent = "正在保存…";
-  errorEl.classList.add("hidden");
-  try {
-    const resp = await fetch("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: provider,
-        api_key: key,
-        base_url: provider === "custom" ? customUrl.value.trim() : "",
-        model: modelSel.value || document.getElementById("model-custom").value.trim() || "",
-      }),
-    });
-    const data = await resp.json();
-    if (data.ok) {
-      btnStart.querySelector("span").textContent = "配置成功，正在进入…";
-      setTimeout(() => { window.location.href = "/"; }, 600);
-    } else {
-      errorEl.textContent = data.error || "保存失败，请重试";
-      errorEl.classList.remove("hidden");
-      btnStart.disabled = false;
-      btnStart.querySelector("span").textContent = "保存并开始使用";
-    }
-  } catch (err) {
-    errorEl.textContent = "网络错误，请检查服务是否正常运行";
-    errorEl.classList.remove("hidden");
-    btnStart.disabled = false;
-  }
-});
-
-checkConfig();
-</script>
+<script src="/static/config.js" defer></script>
 </body>
 </html>

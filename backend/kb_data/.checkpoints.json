@@ -1,0 +1,22 @@
+{
+  "URLhaus": {
+    "etag": "",
+    "last_ok": "2026-08-04 13:25:39"
+  },
+  "FireHOL_level1": {
+    "etag": "",
+    "last_ok": "2026-08-04 13:25:40"
+  },
+  "FireHOL_level3": {
+    "etag": "",
+    "last_ok": "2026-08-04 13:25:41"
+  },
+  "EmergingThreats_compromised": {
+    "etag": "",
+    "last_ok": "2026-08-04 13:25:42"
+  },
+  "AlienVault_OTX": {
+    "etag": "",
+    "last_ok": "2026-08-04 13:25:48"
+  }
+}

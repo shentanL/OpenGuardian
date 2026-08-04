@@ -222,21 +222,26 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn(".bg-canvas", css)
         self.assertIn("pointer-events: none", css)
         self.assertEqual(css.count("{"), css.count("}"))
-    def test_sampler_interval_1s(self):
-        """资源采样间隔缩到最短：1s 连续采样。"""
+    def test_sampler_interval_optimized(self):
+        """资源采样间隔优化：5s 间隔 + 单守护线程。"""
         main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
-        self.assertIn("interval=1", main)
+        self.assertIn("interval=5", main)
         self.assertIn("get_resource_history(limit=120)", main)
+        sampler = (Path(__file__).resolve().parent.parent / "app" / "sampler.py").read_text(encoding="utf-8")
+        self.assertIn("def _run(self)", sampler)
+        self.assertIn("self._stopping.wait", sampler)
+        self.assertIn('disk_usage("C:\\\\")', sampler)
 
     def test_kb_active_update(self):
         """知识库主动汲取：启动后台更新 + stats 暴露状态。"""
         main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
-        self.assertIn("start_background_update", main)
+        self.assertIn("start_background_ingestion", main)
         self.assertIn("kb_status", main)
-        updater = (Path(__file__).resolve().parent.parent / "app" / "kb" / "updater.py").read_text(encoding="utf-8")
-        self.assertIn("URLHAUS_URL", updater)
-        self.assertIn("FIREHOL_URL", updater)
-        self.assertIn("update_knowledge", updater)
+        # 新摄入管道在 ingestion.py
+        ingestion = (Path(__file__).resolve().parent.parent / "app" / "kb" / "ingestion.py").read_text(encoding="utf-8")
+        self.assertIn("URLhaus", ingestion)
+        self.assertIn("FireHOL", ingestion)
+        self.assertIn("run_ingestion", ingestion)
         js = (Path(__file__).resolve().parent.parent.parent / "frontend" / "app.js").read_text(encoding="utf-8")
         self.assertIn("renderKbStatus", js)
 
@@ -257,12 +262,12 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn("wcard", js)             # 欢迎卡示例问题
         self.assertIn("navigator.clipboard", js)
         html = (Path(__file__).resolve().parent.parent.parent / "frontend" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("v0.5.8", html)          # 版本号
+        self.assertIn("v0.6.0", html)          # 版本号
         css = (Path(__file__).resolve().parent.parent.parent / "frontend" / "style.css").read_text(encoding="utf-8")
         self.assertIn("::-webkit-scrollbar", css)
         self.assertIn(":focus-visible", css)   # 焦点态
         cfg = (Path(__file__).resolve().parent.parent / "app" / "config.py").read_text(encoding="utf-8")
-        self.assertIn('APP_VERSION: str = "0.5.8"', cfg)
+        self.assertIn('APP_VERSION: str = "0.7.0"', cfg)
 
     def test_security_score(self):
         """安全系数：评分算法（扣分/等级/加固建议）。"""
@@ -327,8 +332,8 @@ class TestUIFrontend(unittest.TestCase):
         self.assertIn("codeload.github.com/eset/malware-ioc", vh)
         self.assertIn("file_sha256", vh)
         self.assertIn("cached_hashes", vh)
-        updater = (Path(__file__).resolve().parent.parent / "app" / "kb" / "updater.py").read_text(encoding="utf-8")
-        self.assertIn("malwarebazaar", updater)
+        ingestion = (Path(__file__).resolve().parent.parent / "app" / "kb" / "ingestion.py").read_text(encoding="utf-8")
+        self.assertIn("malwarebazaar", ingestion.lower())
         main = (Path(__file__).resolve().parent.parent / "app" / "main.py").read_text(encoding="utf-8")
         self.assertIn('"malware_hash": 0', main)
 

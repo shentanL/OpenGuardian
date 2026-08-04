@@ -77,7 +77,23 @@ class Database:
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(self._path, check_same_thread=False)
+            # 性能优化：WAL 模式 + 减少同步频率
+            self._conn.execute("PRAGMA journal_mode=WAL;")
+            self._conn.execute("PRAGMA synchronous=NORMAL;")
+            self._conn.execute("PRAGMA wal_autocheckpoint=1000;")  # 每 1000 页自动 checkpoint
+            self._conn.execute("PRAGMA cache_size=-8000;")  # 8MB 缓存
+            self._conn.execute("PRAGMA busy_timeout=3000;")
             self._conn.executescript(_SCHEMA)
+            # 索引优化
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);"
+            )
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scan_history_time ON scan_history(time);"
+            )
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_resource_history_time ON resource_history(time);"
+            )
             # 轻量迁移：老库补 risks_json 列（已存在则忽略）
             try:
                 self._conn.execute("ALTER TABLE scan_history ADD COLUMN risks_json TEXT")
@@ -85,8 +101,15 @@ class Database:
                 logger.info("迁移: scan_history 增加 risks_json 列")
             except sqlite3.OperationalError:
                 pass  # 列已存在
+            # 初始化 Agent 记忆系统表
+            try:
+                from .memory import MEMORY_SCHEMA_EXT
+                self._conn.executescript(MEMORY_SCHEMA_EXT)
+                self._conn.commit()
+            except Exception:
+                pass
             self._conn.commit()
-            logger.info("SQLite 就绪: %s", self._path)
+            logger.info("SQLite 就绪 (WAL): %s", self._path)
         except Exception as exc:  # noqa: BLE001
             logger.warning("SQLite 初始化失败，降级内存模式: %s", exc)
             self._conn = None
@@ -235,10 +258,14 @@ class Database:
 
 
 _db: Database | None = None
+_db_lock = threading.Lock()
 
 
 def get_db() -> Database:
     global _db
-    if _db is None:
-        _db = Database()
-    return _db
+    if _db is not None:
+        return _db
+    with _db_lock:
+        if _db is None:
+            _db = Database()
+        return _db

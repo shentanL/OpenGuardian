@@ -3,7 +3,7 @@
 ; 前提: 先用 build.bat 选项 1 生成 dist\OpenGuardian 文件夹
 
 !define PRODUCT_NAME "OpenGuardian"
-!define PRODUCT_VERSION "0.5.8"
+!define PRODUCT_VERSION "0.6.0"
 !define PRODUCT_PUBLISHER "OpenGuardian Team"
 !define PRODUCT_WEB_SITE "https://github.com/yourname/OpenGuardian"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\OpenGuardian.exe"

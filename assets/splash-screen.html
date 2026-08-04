@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!-- OpenGuardian Splash Screen — 粒子网络 + 盾牌扫描进场动画 -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenGuardian</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #000;
+    display:flex; align-items:center; justify-content:center;
+    height:100vh; overflow:hidden;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  canvas { position:fixed; inset:0; z-index:0; }
+
+  .splash {
+    position:relative; z-index:1;
+    text-align:center;
+    display:flex; flex-direction:column;
+    align-items:center; gap:20px;
+  }
+
+  /* 图标容器：旋转扫描圈 */
+  .icon-wrap {
+    position:relative;
+    width:120px; height:120px;
+  }
+  .icon-wrap svg {
+    width:120px; height:120px;
+    position:relative; z-index:2;
+  }
+  /* 扫描圈 */
+  .scan-ring {
+    position:absolute; inset:-12px;
+    border-radius:50%;
+    border:2px solid rgba(118,185,0,0.2);
+    animation: scan-pulse 2s ease-in-out infinite;
+    z-index:1;
+  }
+  .scan-ring:nth-child(2) { animation-delay:0.5s; }
+  .scan-ring:nth-child(3) { animation-delay:1s; }
+
+  @keyframes scan-pulse {
+    0% { transform:scale(0.9); opacity:0.8; border-color:rgba(118,185,0,0.4); }
+    50% { transform:scale(1.15); opacity:0.2; border-color:rgba(191,242,48,0.1); }
+    100% { transform:scale(0.9); opacity:0.8; border-color:rgba(118,185,0,0.4); }
+  }
+
+  /* 品牌文字 */
+  .brand {
+    font-size:32px; font-weight:800;
+    letter-spacing:3px;
+    color:#ffffff;
+    text-shadow: 0 0 30px rgba(118,185,0,0.5);
+    animation: text-flicker 3s ease-in-out infinite;
+  }
+  .brand span { color:#76b900; }
+
+  @keyframes text-flicker {
+    0%,100% { opacity:1; }
+    93% { opacity:1; }
+    94% { opacity:0.6; }
+    95% { opacity:1; }
+    96% { opacity:0.5; }
+    97% { opacity:1; }
+  }
+
+  .tagline {
+    font-size:12px; color:#757575;
+    letter-spacing:4px;
+    animation: fade-up 0.8s ease-out 0.3s both;
+  }
+
+  /* 进度条 */
+  .progress-wrap {
+    width:280px; height:2px;
+    background:#1a1a1a;
+    border-radius:1px;
+    overflow:hidden;
+    animation: fade-up 0.8s ease-out 0.5s both;
+  }
+  .progress-bar {
+    height:100%; width:0%;
+    background:linear-gradient(90deg, #76b900, #bff230);
+    border-radius:1px;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 8px rgba(118,185,0,0.6);
+  }
+
+  /* 状态文字 */
+  .status {
+    font-size:11px; color:#a7a7a7;
+    letter-spacing:1px;
+    font-family: ui-monospace,monospace;
+    animation: fade-up 0.8s ease-out 0.7s both;
+  }
+
+  @keyframes fade-up {
+    from { opacity:0; transform:translateY(10px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  /* 版本号 */
+  .version {
+    position:fixed; bottom:20px;
+    font-size:9px; color:#3a3a3a;
+    letter-spacing:2px;
+  }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div class="splash">
+  <!-- 图标 + 扫描圈 -->
+  <div class="icon-wrap">
+    <div class="scan-ring"></div>
+    <div class="scan-ring"></div>
+    <div class="scan-ring"></div>
+    <svg viewBox="0 0 256 256">
+      <circle cx="128" cy="128" r="120" fill="none" stroke="#1a1a1a" stroke-width="1"/>
+      <path d="M128 20 L218 50 L218 130 C218 190 170 228 128 244 C86 228 38 190 38 130 L38 50 Z"
+            fill="#0a0a0a" stroke="#76b900" stroke-width="3"/>
+      <circle cx="128" cy="120" r="8" fill="#76b900"/>
+      <circle cx="128" cy="80" r="4" fill="#bff230"/>
+      <line x1="128" y1="112" x2="128" y2="84" stroke="#76b900" stroke-width="1.5"/>
+      <circle cx="100" cy="120" r="4" fill="#bff230"/>
+      <line x1="120" y1="120" x2="104" y2="120" stroke="#76b900" stroke-width="1.5"/>
+      <circle cx="156" cy="120" r="4" fill="#bff230"/>
+      <line x1="136" y1="120" x2="152" y2="120" stroke="#76b900" stroke-width="1.5"/>
+      <circle cx="128" cy="160" r="4" fill="#bff230"/>
+      <line x1="128" y1="128" x2="128" y2="156" stroke="#76b900" stroke-width="1.5"/>
+      <path d="M108 182 L122 196 L152 164" fill="none" stroke="#76b900" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <div class="brand"><span>Open</span>Guardian</div>
+  <div class="tagline">AI 数字安全平台</div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress"></div>
+  </div>
+
+  <div class="status" id="status">正在初始化引擎…</div>
+</div>
+
+<div class="version">v0.7.0</div>
+
+<script>
+  // 粒子背景
+  (function(){
+    var c=document.getElementById('bg'),ctx=c.getContext('2d');
+    var W=c.width=window.innerWidth, H=c.height=window.innerHeight;
+    var particles=[];
+    for(var i=0;i<50;i++){
+      particles.push({
+        x:Math.random()*W, y:Math.random()*H,
+        vx:(Math.random()-0.5)*0.5, vy:(Math.random()-0.5)*0.5,
+        r:Math.random()*1.2+0.5
+      });
+    }
+    function t(){
+      ctx.clearRect(0,0,W,H);
+      for(var i=0;i<particles.length;i++){
+        var p=particles[i];
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+        if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+        ctx.fillStyle='rgba(118,185,0,0.5)';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        for(var j=i+1;j<particles.length;j++){
+          var p2=particles[j];
+          var dx=p.x-p2.x, dy=p.y-p2.y;
+          var d=Math.sqrt(dx*dx+dy*dy);
+          if(d<100){
+            ctx.strokeStyle='rgba(118,185,0,'+(0.12*(1-d/100))+')';
+            ctx.lineWidth=0.5;
+            ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(t);
+    }
+    t();
+    window.addEventListener('resize',function(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;});
+  })();
+
+  // 进度模拟
+  var bar=document.getElementById('progress');
+  var status=document.getElementById('status');
+  var steps=[
+    {pct:20, msg:'正在加载检测引擎…'},
+    {pct:45, msg:'同步威胁情报数据库…'},
+    {pct:70, msg:'初始化 AI 安全助手…'},
+    {pct:90, msg:'连接系统防护服务…'},
+    {pct:100,msg:'准备就绪 ✓'}
+  ];
+  var step=0;
+  function advance(){
+    if(step>=steps.length) return;
+    var s=steps[step];
+    bar.style.width=s.pct+'%';
+    status.textContent=s.msg;
+    step++;
+    if(step<steps.length){
+      setTimeout(advance, 600 + Math.random()*400);
+    }
+  }
+  setTimeout(advance, 300);
+</script>
+</body>
+</html>

@@ -1,14 +1,15 @@
-"""OpenGuardian FastAPI 主入口。"""
+"""OpenGuardian FastAPI 主入口 — 企业级架构。"""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import sys
+import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,9 +18,14 @@ from pathlib import Path
 from .agents import build_bus, build_consultant
 from .config import settings
 from .db import get_db
-from .kb.updater import kb_stats, start_background_update
+from .errors import register_error_handlers
+from .kb.ingestion import ingestion_stats, start_background_ingestion, force_refresh as kb_force_refresh
+from .middleware import RequestTracingMiddleware, get_latency_stats
 from .sampler import ResourceSampler
 from .security import assess_security
+from .prompts import CONSULT_STREAM, FALLBACK_AI_UNAVAILABLE, FALLBACK_AI_RETRY, FALLBACK_AI_TIMEOUT
+from .rate_limit import RateLimitMiddleware
+from .realtime import get_hub, ws_endpoint
 from .schemas import (
     AgentTask,
     ChatRequest,
@@ -34,87 +40,117 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 _sampler: ResourceSampler | None = None
+_start_time: float | None = None
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """服务生命周期：启动资源采样器，关闭时停止。"""
-    global _sampler
-    _sampler = ResourceSampler(get_db(), interval=1)  # 最短间隔：1s 连续采样
+    """服务生命周期：初始化记忆系统 + 资源采样器 + 实时推送。"""
+    global _sampler, _start_time
+    _start_time = time.time()
+    from .memory import init_memory_schema, get_memory
+    init_memory_schema(get_db())
+    get_memory()
+    _sampler = ResourceSampler(get_db(), interval=5)
     _sampler.start()
-    start_background_update(delay=5.0)  # 知识库主动汲取（URLhaus/FireHOL）
+    start_background_ingestion(delay=5.0, interval_hours=6.0)
+    # 后台检查更新（不阻塞启动）
+    import threading as _thr
+    _thr.Thread(target=lambda: _check_update_async(), daemon=True, name="update-check").start()
+    # 向 Windows 安全中心注册（需管理员权限，失败不阻塞）
+    _thr.Thread(target=lambda: _register_wsc(), daemon=True, name="wsc-register").start()
+    # 启动 ETW 进程监控
+    try:
+        from .etw_monitor import get_monitor as _get_etw
+        _etw = _get_etw()
+        _etw.on_process(lambda evt: logger.debug("ETW: %s %s (PID %s)", evt["event"], evt["name"], evt["pid"]))
+        _etw.start()
+    except Exception:
+        pass
+    logger.info(
+        "%s v%s started — LLM %s, agents: %s, ws: ready",
+        settings.APP_NAME, settings.APP_VERSION,
+        "configured" if consultant.llm.available else "NOT CONFIGURED",
+        [a["name"] for a in bus.list_agents()] + ["consultant"],
+    )
     try:
         yield
     finally:
         if _sampler:
             _sampler.stop()
+        hub = get_hub()
+        await hub.stop()
 
 
 app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, lifespan=lifespan)
 
+# ── 中间件栈（顺序重要：后添加的先执行）──
+# 1. 请求追踪 + 结构化日志 + 安全头
+app.add_middleware(RequestTracingMiddleware)
+# 2. CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://127.0.0.1:8300", "http://localhost:8300",
+        "http://127.0.0.1:8000", "http://localhost:8000",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# 3. 速率限制
+app.add_middleware(RateLimitMiddleware)
 
-# ---- 组装 Agent 系统 ----
+# ── 全局错误处理 ──
+register_error_handlers(app)
+
+# ── 组装 Agent 系统 ──
 bus = build_bus()
 consultant = build_consultant(bus)
 db = get_db()
 
-# ---- 会话（SQLite 持久化）----
 
-
-def _get_history(session_id: str, limit: int = 8) -> list[dict]:
+def _get_history(session_id: str, limit: int = 20) -> list[dict]:
     history = db.load_session(session_id)
     return history[-limit:]
 
 
-@app.on_event("startup")
-async def _startup() -> None:
-    logger.info(
-        "%s v%s started — LLM %s, agents: %s",
-        settings.APP_NAME,
-        settings.APP_VERSION,
-        "configured" if consultant.llm.available else "NOT CONFIGURED (fallback mode)",
-        [a["name"] for a in bus.list_agents()] + ["consultant"],
-    )
-
-
 # ---- API ----
 # 注意：端点使用同步 def（非 async def），FastAPI 会将其放入线程池执行。
-# Agent 内部用 asyncio.run() 调用 LLM，同步端点可避免
-# "asyncio.run() cannot be called from a running event loop" 错误。
-@app.get("/api/health")
-def health() -> HealthResponse:
-    return HealthResponse(app=settings.APP_NAME, version=settings.APP_VERSION)
+# Agent 内部用 asyncio.run() / run_async() 调用 LLM。
 
 
 # ---- 配置管理 ----
 @app.get("/api/config")
 def get_config() -> dict:
     """返回当前配置状态 + 所有可用提供商信息。"""
-    from .config_manager import is_configured as _configured, get_all_providers, get_provider
+    from .config_manager import is_configured as _configured, get_all_providers, get_provider, get_model, get_base_url
 
     return {
         "configured": _configured(),
         "provider": get_provider(),
+        "model": get_model(),
+        "base_url": get_base_url(),
         "providers": get_all_providers(),
     }
 
 
 @app.post("/api/config")
 def set_config(payload: dict) -> dict:
-    """保存提供商配置到 config.json。"""
+    """保存提供商配置到 config.json（带基本校验）。"""
+    # 基本校验：防止注入攻击和超大数据
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="请求体必须为 JSON 对象")
+    provider = str(payload.get("provider", "")).strip()[:50]
+    api_key = str(payload.get("api_key", "")).strip()[:512]
+    base_url = str(payload.get("base_url", "")).strip()[:500]
+    model = str(payload.get("model", "")).strip()[:200]
     from .config_manager import save_config
 
     return save_config(
-        provider=payload.get("provider", "deepseek"),
-        api_key=payload.get("api_key", ""),
-        base_url=payload.get("base_url", ""),
-        model=payload.get("model", ""),
+        provider=provider or "deepseek",
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
     )
 
 
@@ -161,6 +197,16 @@ def chat(req: ChatRequest) -> ChatResponse:
             summary=result.message[:200],
             risks=[r.model_dump() for r in risks],
         )
+        # 通过 WebSocket 推送仪表盘刷新事件（同步端点 → 线程中运行）
+        try:
+            hub = get_hub()
+            import threading as _thr
+            _thr.Thread(
+                target=lambda: __import__('asyncio').run(hub.broadcast("dashboard_refresh", {"total": len(risks)})),
+                daemon=True,
+            ).start()
+        except Exception:
+            pass
         try:
             import psutil
 
@@ -199,29 +245,21 @@ async def chat_stream(req: ChatRequest):
     intent, _ = await run_in_threadpool(consultant._classify, req.message)
 
     async def event_gen():
+        detect_result = None  # 捕获检测结果供后续持久化
         # 1) 先发意图事件
         yield f'data: {json.dumps({"type": "intent", "intent": intent.value}, ensure_ascii=False)}\n\n'
 
         if intent == Intent.CONSULT:
             # 咨询类：流式 LLM 输出（注入最近检测上下文）
-            system = (
-                "你是 OpenGuardian——AI 驱动的个人数字安全专家。\n"
-                "职责：回答网络安全问题，给出准确、可操作的安全建议。\n"
-                "规则：\n"
-                "1. 只回答安全问题——非安全话题请礼貌引导回安全领域\n"
-                "2. 引用真实技术标准（如 CIS/NIST/OWASP）而非主观猜测\n"
-                "3. 给出具体步骤而非空泛建议（如'关闭 SMBv1：控制面板→程序→启用或关闭 Windows 功能'）\n"
-                "4. 不超过 300 字，口语化但专业\n"
-                "5. 如果用户询问检测结果，优先引用当前扫描数据而非编造\n"
-            )
+            system = CONSULT_STREAM
             chunks: list[str] = []
             async for token in consultant.llm.stream_chat(
                 [{"role": "user", "content": req.message}], system=system
             ):
                 chunks.append(token)
                 yield f'data: {json.dumps({"type": "token", "text": token}, ensure_ascii=False)}\n\n'
-            reply = "".join(chunks) or "（AI 暂时无法响应，请稍后再试）"
-            yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
+            reply = "".join(chunks) or FALLBACK_AI_TIMEOUT
+            yield f'data: {json.dumps({"type": "result", "reply": reply, "intent": "consult", "risks": []}, ensure_ascii=False)}\n\n'
 
         elif intent == Intent.EDUCATE:
             # 教育：走 Agent 案例库（秒回） + 流式模拟
@@ -233,7 +271,7 @@ async def chat_stream(req: ChatRequest):
                 chunk = reply[i:i+3]
                 yield f'data: {json.dumps({"type": "token", "text": chunk}, ensure_ascii=False)}\n\n'
                 await asyncio.sleep(0.02)
-            yield f'data: {json.dumps({"type": "result", "reply": reply, "risks": []}, ensure_ascii=False)}\n\n'
+            yield f'data: {json.dumps({"type": "result", "reply": reply, "intent": "educate", "risks": []}, ensure_ascii=False)}\n\n'
 
         else:
             # 检测/执行等其他意图：流式展示处理阶段
@@ -248,8 +286,25 @@ async def chat_stream(req: ChatRequest):
 
             task = AgentTask(intent=intent, params={}, user_input=req.message)
             result = await run_in_threadpool(consultant.handle, task)
+            detect_result = result
             data = result.data or {}
             reply = result.message
+
+            # ★ 先持久化检测结果到 DB，再发 SSE（避免前端 loadDashboard 读到旧数据）
+            if intent == Intent.DETECT:
+                try:
+                    risks = result.risks
+                    db.add_scan(
+                        total_risks=len(risks),
+                        high_risks=sum(1 for r in risks if r.level in (RiskLevel.HIGH, RiskLevel.CRITICAL)),
+                        summary=(result.message or "")[:200],
+                        risks=[r.model_dump() for r in risks],
+                    )
+                    import psutil as _psutil
+                    db.add_resource_sample(_psutil.cpu_percent(interval=0.2), _psutil.virtual_memory().percent, _psutil.disk_usage("/").percent)
+                except Exception:
+                    pass
+
             yield f'data: {json.dumps({"type": "token", "text": reply or "分析完成"}, ensure_ascii=False)}\n\n'
             payload = {
                 "type": "result",
@@ -261,12 +316,55 @@ async def chat_stream(req: ChatRequest):
             }
             yield f'data: {json.dumps(payload, ensure_ascii=False)}\n\n'
 
+            # WebSocket 推送仪表盘刷新（异步，不阻塞 SSE 流）
+            if intent == Intent.DETECT:
+                try:
+                    hub = get_hub()
+                    asyncio.create_task(hub.broadcast("dashboard_refresh", {"total": len(result.risks)}))
+                except Exception:
+                    pass
+
+        # 流式结束后持久化会话
+        session_id = req.session_id or uuid.uuid4().hex[:12]
+        history = _get_history(session_id)
+        history.append({"role": "user", "content": req.message})
+        # 各意图分支已在上面设置了 reply 变量（CONSULT→流式拼接, EDUCATE→Agent结果, DETECT→检测摘要）
+        # 此处不再覆盖，直接存入会话历史
+        history.append({"role": "assistant", "content": reply})
+        db.save_session(session_id, history)
+
+        yield f'data: {json.dumps({"type": "session", "session_id": session_id}, ensure_ascii=False)}\n\n'
         yield "data: {\"type\": \"done\"}\n\n"
 
+    async def safe_event_gen():
+        import asyncio as _asyncio
+        heartbeat_interval = 15  # 每 15 秒发心跳防代理超时
+        last_heartbeat = time.time()
+        try:
+            async for event in event_gen():
+                yield event
+                # Keep-alive: 如果距离上次心跳超过间隔，插入 SSE 注释
+                now = time.time()
+                if now - last_heartbeat >= heartbeat_interval:
+                    yield ": ping\n\n"
+                    last_heartbeat = now
+        except _asyncio.CancelledError:
+            # 客户端断连 —— 记录日志后正确传播取消信号
+            logger.info("SSE stream cancelled (client disconnected)")
+            raise
+        except Exception as exc:
+            logger.exception("SSE stream error: %s", exc)
+            yield f'data: {json.dumps({"type": "error", "message": "服务器内部错误，请重试"}, ensure_ascii=False)}\n\n'
+            yield "data: {\"type\": \"done\"}\n\n"
+
     return StreamingResponse(
-        event_gen(),
+        safe_event_gen(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-store",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
     )
 
 
@@ -346,8 +444,161 @@ def stats() -> dict:
         "resources": db.get_resource_history(limit=120),
         "scans": scans_all[:10],
         "audit_count": len(db.get_audit(limit=1000)),
-        "kb_status": kb_stats(),  # 知识库主动汲取状态
+        "kb_status": ingestion_stats(),  # 多源威胁情报摄入状态
         "security": assess_security(latest.get("risks", []) if latest else None),  # 安全系数+加固方案
+    }
+
+
+# ---- 知识库管理 ----
+
+@app.get("/api/kb/status")
+def kb_status() -> dict:
+    """知识库详细状态（Feed 级别）。"""
+    return ingestion_stats()
+
+
+@app.post("/api/kb/refresh")
+def kb_refresh() -> dict:
+    """手动触发威胁情报立即刷新。"""
+    result = kb_force_refresh()
+    return {"ok": result.get("ok", False), "detail": result.get("detail", ""),
+            "sources": result.get("sources", {}),
+            "domain_count": result.get("domain_count", 0),
+            "ip_count": result.get("ip_count", 0)}
+
+
+# ---- 白名单管理 ----
+
+@app.get("/api/whitelist")
+def whitelist_get() -> dict:
+    return {"items": sorted(db.get_whitelist())}
+
+
+@app.post("/api/whitelist")
+def whitelist_add(payload: dict) -> dict:
+    name = str(payload.get("name", "")).strip()
+    if not name:
+        return {"ok": False, "error": "进程名不能为空"}
+    ok = db.add_whitelist(name)
+    return {"ok": ok, "name": name}
+
+
+@app.delete("/api/whitelist/{name}")
+def whitelist_remove(name: str) -> dict:
+    ok = db.remove_whitelist(name)
+    return {"ok": ok, "name": name}
+
+
+# ---- 自动更新 ----
+
+_update_result_cache: dict | None = None
+
+
+def _register_wsc() -> None:
+    """后台向 Windows 安全中心注册。"""
+    try:
+        from .wsc_register import register
+        register()
+    except Exception:
+        pass
+
+
+def _check_update_async() -> None:
+    """后台检查更新并缓存结果。"""
+    global _update_result_cache
+    try:
+        from .updater import check_update, set_current_version
+        set_current_version(settings.APP_VERSION)
+        _update_result_cache = check_update()
+    except Exception:
+        pass
+
+
+@app.get("/api/update/check")
+def update_check() -> dict:
+    """检查是否有新版本可用。首次调用触发后台检查。"""
+    global _update_result_cache
+    if _update_result_cache is None:
+        _check_update_async()
+    return {
+        "current_version": settings.APP_VERSION,
+        "update_available": _update_result_cache is not None,
+        "latest": _update_result_cache,
+    }
+
+
+# ---- 隐私声明 ----
+
+@app.get("/api/privacy")
+def privacy() -> dict:
+    return {
+        "policy_url": "https://github.com/OpenGuardian/OpenGuardian/blob/main/PRIVACY.md",
+        "data_collected": ["process_names", "cpu_mem_disk_usage", "network_metadata",
+                           "sha256_hashes", "chat_sessions"],
+        "data_stored_locally": True,
+        "external_services": ["configured_ai_api", "threat_intel_feeds", "github_releases_api"],
+        "api_key_encrypted": True,
+        "can_delete_all_data": True,
+        "gdpr_compliant": True,
+    }
+
+
+# ---- 崩溃日志 ----
+
+@app.get("/api/crashes")
+def crash_logs() -> dict:
+    try:
+        from .crash_reporter import get_recent_crashes
+        return {"crashes": get_recent_crashes(5)}
+    except Exception:
+        return {"crashes": []}
+
+
+# ---- 健康检查（企业级：含依赖状态 + 延迟统计）----
+
+@app.get("/api/health")
+def health() -> dict:
+    """增强健康检查：LLM 状态 + DB 状态 + WebSocket 连接数 + 延迟统计。"""
+    latency = get_latency_stats()
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "uptime_seconds": round(time.time() - _start_time) if _start_time else 0,
+        "llm": "configured" if consultant.llm.available else "unavailable",
+        "db": "connected" if db.available else "degraded",
+        "ws_clients": get_hub().client_count,
+        "latency": latency.summary(),
+    }
+
+
+# ---- WebSocket 实时推送 ----
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket 端点：实时推送系统资源 + 安全告警。"""
+    await ws_endpoint(websocket)
+
+
+# ---- 性能统计（运维用）----
+
+@app.get("/api/metrics")
+def metrics() -> dict:
+    """延迟统计 + 系统健康（供运维监控）。"""
+    import psutil as _psutil
+    latency = get_latency_stats()
+    return {
+        "latency": latency.summary(),
+        "routes": {
+            route: latency.route_stats(route)
+            for route in ["/api/chat", "/api/chat/stream", "/api/stats", "/api/health"]
+            if latency.route_stats(route)["count"] > 0
+        },
+        "system": {
+            "cpu_percent": round(_psutil.cpu_percent(interval=0.1), 1),
+            "memory_percent": round(_psutil.virtual_memory().percent, 1),
+            "ws_clients": get_hub().client_count,
+        },
     }
 
 

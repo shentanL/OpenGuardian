@@ -178,99 +178,6 @@ CASES: dict[str, dict] = {
 }
 
 
-class EducatorAgent(BaseAgent):
-    name = "educate"
-    description = "数字安全教育：典型案例讲解与安全知识科普"
-
-    def handle(self, task: AgentTask) -> AgentResult:
-        topic = task.params.get("topic", "")
-        case = self._find_case(topic)
-
-        if case:
-            tips_text = "\n".join(f"{i+1}. {t}" for i, t in enumerate(case["tips"]))
-            reply = (
-                f"📖 【{topic}】安全课堂\n\n"
-                f"场景：{case['scenario']}\n\n"
-                f"原理：{case['explain']}\n\n"
-                f"防护建议：\n{tips_text}"
-            )
-        else:
-            # 未命中案例库 → 尝试 LLM 讲解（失败则给通用指引）
-            llm = get_llm_client()
-            reply = llm and self._ask_llm(llm, topic) or self._generic(topic)
-
-        return AgentResult(agent=self.name, success=True, message=reply, data={"topic": topic})
-
-    @staticmethod
-    def _find_case(topic: str) -> dict | None:
-        """按关键词模糊匹配案例库（如 '刷单' 命中 '刷单返利诈骗'）。"""
-        if not topic:
-            return None
-        for key in CASES:
-            if topic in key or key in topic:
-                return CASES[key]
-        return None
-
-    def _ask_llm(self, llm, topic: str) -> str:
-        import asyncio
-
-        # RAG：从知识库检索相关内容作为上下文
-        context = self._rag_search(topic)
-
-        async def _run() -> str | None:
-            prompt = (
-                f"请用通俗易懂的方式科普「{topic}」相关的数字安全知识。\n"
-                f"包括：是什么、常见套路、如何防护。控制在 250 字以内。\n"
-            )
-            if context:
-                prompt += f"\n\n以下是与「{topic}」相关的知识库内容，请参考（不要直接复制）：\n{context}"
-
-            return await llm.chat(
-                [{"role": "user", "content": prompt}],
-                system="你是 OpenGuardian 的安全教育专家。用真实知识库内容回答，不编造。引用具体术语时给出白话解释。",
-            )
-
-        try:
-            result = asyncio.run(_run())
-            return result or self._generic(topic)
-        except Exception:
-            return self._generic(topic)
-
-    @staticmethod
-    def _rag_search(topic: str) -> str:
-        """RAG 检索：从 120 术语 + 30 案例中搜索与 topic 相关的内容。"""
-        from ..kb.glossary import GLOSSARY
-
-        results = []
-
-        # 1. 搜索术语库（120 条）
-        for key, entry in GLOSSARY.items():
-            # 检查 topic 与术语 key 或 plain 解释的重叠
-            if _word_overlap(topic, key) > 0.3 or _word_overlap(topic, entry.get("plain", "")) > 0.2:
-                item = f"【术语】{key.split('|')[0]}: {entry.get('plain', '')}"
-                if entry.get("advice"):
-                    item += f" 防护：{entry['advice']}"
-                results.append(item)
-
-        # 2. 搜索案例库（30 条）
-        for key, case in CASES.items():
-            if _word_overlap(topic, key) > 0.2 or _word_overlap(topic, case.get("explain", "")) > 0.1:
-                item = f"【案例】{key}: {case.get('explain', '')[:100]}"
-                results.append(item)
-
-        # 3. 去重 + 取 Top 3
-        seen = set()
-        top = []
-        for r in results:
-            if r[:30] not in seen:
-                seen.add(r[:30])
-                top.append(r)
-            if len(top) >= 3:
-                break
-
-        return "\n".join(top) if top else ""
-
-
 def _word_overlap(a: str, b: str) -> float:
     """中文字级重叠度（bigram + 单字）。支持 勒索→勒索病毒, 零日→零日攻击。"""
     if not a or not b:
@@ -296,6 +203,107 @@ def _word_overlap(a: str, b: str) -> float:
         return len(chars_a & chars_b) / min(len(chars_a), len(chars_b)) * 0.3
 
     return 0.0
+
+
+class EducatorAgent(BaseAgent):
+    name = "educate"
+    description = "数字安全教育：典型案例讲解与安全知识科普"
+
+    def handle(self, task: AgentTask) -> AgentResult:
+        topic = task.params.get("topic", "")
+        case = self._find_case(topic)
+
+        if case:
+            tips_text = "\n".join(f"{i+1}. {t}" for i, t in enumerate(case["tips"]))
+            reply = (
+                f"来，聊聊「{topic}」——\n\n"
+                f"先想象一下这个场景 👇\n{case['scenario']}\n\n"
+                f"说人话就是：{case['explain']}\n\n"
+                f"记住这几招，基本不会中招：\n{tips_text}"
+            )
+        else:
+            # 未命中案例库 → 尝试 LLM 讲解（失败则给通用指引）
+            llm = get_llm_client()
+            reply = llm and self._ask_llm(llm, topic) or self._generic(topic)
+
+        return AgentResult(agent=self.name, success=True, message=reply, data={"topic": topic})
+
+    @staticmethod
+    def _find_case(topic: str) -> dict | None:
+        """按关键词模糊匹配案例库（如 '刷单' 命中 '刷单返利诈骗'）。"""
+        if not topic:
+            return None
+        for key in CASES:
+            if topic in key or key in topic:
+                return CASES[key]
+        return None
+
+    def _ask_llm(self, llm, topic: str) -> str:
+        # RAG：从知识库检索相关内容作为上下文
+        context = self._rag_search(topic)
+
+        prompt = (
+            f"请用通俗易懂的方式科普「{topic}」相关的数字安全知识。\n"
+            f"包括：是什么、常见套路、如何防护。控制在 250 字以内。\n"
+        )
+        if context:
+            prompt += f"\n\n以下是与「{topic}」相关的知识库内容，请参考（不要直接复制）：\n{context}"
+
+        try:
+            from ..async_util import run_async
+            from ..prompts import EDUCATE_SYSTEM
+            result = run_async(
+                llm.chat(
+                    [{"role": "user", "content": prompt}],
+                    system=EDUCATE_SYSTEM,
+                ),
+                timeout=20.0,
+            )
+            return result or self._generic(topic)
+        except Exception:
+            return self._generic(topic)
+
+    @staticmethod
+    def _rag_search(topic: str) -> str:
+        """RAG 检索：TF-IDF 语义搜索 + 术语库 + 案例库。"""
+        results = []
+
+        # 1. TF-IDF 语义搜索（优先）
+        try:
+            from ..kb.vector_search import semantic_search
+            hits = semantic_search(topic, top_k=5)
+            for h in hits:
+                results.append(f"【语义匹配·{h['term']}】{h['text'][:120]}")
+        except Exception:
+            pass
+
+        # 2. 搜索术语库（120 条）—— fallback
+        if not results:
+            from ..kb.glossary import GLOSSARY
+            for key, entry in GLOSSARY.items():
+                if _word_overlap(topic, key) > 0.3 or _word_overlap(topic, entry.get("plain", "")) > 0.2:
+                    item = f"【术语】{key.split('|')[0]}: {entry.get('plain', '')}"
+                    if entry.get("advice"):
+                        item += f" 防护：{entry['advice']}"
+                    results.append(item)
+
+        # 3. 搜索案例库（30 条）
+        for key, case in CASES.items():
+            if _word_overlap(topic, key) > 0.2 or _word_overlap(topic, case.get("explain", "")) > 0.1:
+                item = f"【案例】{key}: {case.get('explain', '')[:100]}"
+                results.append(item)
+
+        # 4. 去重 + 取 Top 3
+        seen = set()
+        top = []
+        for r in results:
+            if r[:30] not in seen:
+                seen.add(r[:30])
+                top.append(r)
+            if len(top) >= 3:
+                break
+
+        return "\n".join(top) if top else ""
 
     @staticmethod
     def _generic(topic: str) -> str:

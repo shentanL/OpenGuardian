@@ -25,9 +25,9 @@ class Settings:
 
     # ---- 服务 ----
     APP_NAME: str = "OpenGuardian"
-    APP_VERSION: str = "0.5.8"
+    APP_VERSION: str = "0.7.0"
     HOST: str = os.getenv("HOST", "127.0.0.1")
-    PORT: int = int(os.getenv("PORT", "8000"))
+    PORT: int = int(os.getenv("PORT", "8300"))
 
     # ---- 检测 ----
     CPU_ALERT_PCT: float = float(os.getenv("CPU_ALERT_PCT", "85"))

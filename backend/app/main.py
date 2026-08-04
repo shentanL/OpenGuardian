@@ -199,8 +199,11 @@ def system_info() -> dict:
 
 
 @app.get("/api/report")
-def export_report(scan_index: int = -1) -> dict:
-    """导出最近一次检测的 HTML 安全报告。"""
+def export_report(scan_index: int = -1, fmt: str = "html") -> dict:
+    """导出最近一次检测的安全报告。
+
+    参数: scan_index=-1 最近一次, fmt=html|sarif
+    """
     from .report import generate_html_report
     from .db import get_db
     from .config_manager import get_config
@@ -234,6 +237,12 @@ def export_report(scan_index: int = -1) -> dict:
         total_raw=total_raw,
         llm_provider=llm_provider,
     )
+
+    # SARIF 格式
+    if fmt == "sarif":
+        from .report_sarif import export_sarif_string
+        sarif = export_sarif_string(risks=risks_raw, security_score=security_score)
+        return {"ok": True, "sarif": sarif, "scan_time": scan.get("time", ""), "format": "sarif"}
 
     return {"ok": True, "html": html, "scan_time": scan.get("time", ""), "format": "html"}
 

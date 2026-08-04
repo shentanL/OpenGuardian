@@ -69,6 +69,14 @@ class ConsultantAgent(BaseAgent):
     def handle(self, task: AgentTask) -> AgentResult:
         # Consultant 不走总线分发，直接编排
         user_input = task.user_input
+
+        # Slash 命令优先检测
+        if user_input.startswith("/"):
+            from ..slash_cmd import handle_command
+            result = handle_command(user_input, self)
+            if result:
+                return result
+
         intent, params = self._classify(user_input)
         logger.info("Intent classified: %s (input=%r)", intent.value, user_input[:50])
 

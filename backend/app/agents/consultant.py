@@ -85,6 +85,9 @@ class ConsultantAgent(BaseAgent):
         if intent == Intent.ASSET:
             return self._handle_asset(user_input)
 
+        if intent == Intent.CREDENTIAL:
+            return self._handle_credential(user_input)
+
         # educate
         return self._handle_educate(user_input)
 

@@ -517,43 +517,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .msg-copy.copied { color: var(--green); opacity: 1; }
 
 
-/* ═══ 增强资源图表 ═══ */
-.res-chart-wrap {
-  background: var(--bg-panel); border: 1px solid var(--gray-border);
-  border-radius: var(--radius); overflow: hidden;
-  width: 100%; position: relative;
-}
-.res-chart { width: 100%; height: 220px; display: block; }
-
-/* 图例增强 */
-.legend {
-  display: flex; gap: 24px; padding: 10px 16px;
-  font-family: var(--mono); font-size: 10px;
-  border-top: 1px solid var(--gray-border);
-  background: rgba(0,0,0,0.3);
-}
-.legend .lg { display: flex; align-items: center; gap: 6px; color: var(--gray-400); }
-.legend .lg b { font-size: 14px; font-weight: 800; margin: 0 2px; }
-.legend .lg em { font-size: 9px; color: var(--gray-500); font-style: normal; margin-left: 4px; }
-.legend .lg.active b { color: var(--green); text-shadow: 0 0 8px rgba(118,185,0,0.4); }
-.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-.sw-cpu { background: #76b900; box-shadow: 0 0 6px rgba(118,185,0,0.5); }
-.sw-mem { background: #bff230; box-shadow: 0 0 6px rgba(191,242,48,0.5); }
-.sw-disk { background: #a7a7a7; }
-
-/* 图表 tooltip 增强 */
-.chart-tip {
-  position: absolute; pointer-events: none;
-  background: rgba(0,0,0,0.95);
-  border: 1px solid var(--green); border-left: 3px solid var(--green);
-  border-radius: 2px; padding: 10px 14px;
-  font-family: var(--mono); font-size: 11px;
-  color: var(--gray-300); line-height: 1.7;
-  white-space: nowrap; z-index: 10; display: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.7), 0 0 12px rgba(118,185,0,0.15);
-}
-
-/* 导出按钮栏 */
+/* ═══ 导出按钮栏 ═══ */
 .export-bar { display: flex; gap: 8px; justify-content: flex-end; padding: 4px 0 8px; }
 .btn-export {
   padding: 4px 14px; background: transparent; border: 1px solid var(--gray-border);

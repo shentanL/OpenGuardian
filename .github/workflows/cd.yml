@@ -20,44 +20,55 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt pyinstaller
+          pip install -r backend/requirements.txt -r backend/requirements-build.txt
 
       # 打包需要 backend/.env（真实 Key 存 GitHub Secrets，不进仓库）
       - name: Create .env from secrets
         run: |
           echo "DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}" > backend/.env
           if [ ! -s backend/.env ] || grep -q "DEEPSEEK_API_KEY=$" backend/.env; then
-            echo "::warning::DEEPSEEK_API_KEY secret 未配置，构建将使用占位符"
+            echo "::warning::DEEPSEEK_API_KEY secret 未配置，使用占位符"
             echo "DEEPSEEK_API_KEY=ci-placeholder-key" > backend/.env
           fi
         shell: bash
 
       - name: Build with PyInstaller
         run: pyinstaller OpenGuardian.spec --clean --noconfirm
+        shell: bash
 
-      - name: Install Inno Setup
+      - name: Install Inno Setup (winget)
         shell: powershell
         run: |
-          $installer = "$env:TEMP\innosetup.exe"
-          Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $installer -UseBasicParsing
-          Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait
+          winget install --accept-package-agreements --accept-source-agreements --silent JRSoftware.InnoSetup
           Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" | Select-Object -ExpandProperty FullName
 
       - name: Compile Installer (ISCC)
         shell: powershell
         run: |
-          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
-            $iscc = (Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" | Select-Object -First 1).FullName
+          $iscc = (Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          if (-not $iscc) {
+            Write-Host "::error::ISCC not found in C:\Program Files (x86)"
+            Get-ChildItem "C:\Program Files (x86)" -ErrorAction SilentlyContinue | Select-Object Name
+            exit 1
           }
           Write-Host "Using ISCC: $iscc"
-          & $iscc setup.iss 2>&1 | Tee-Object -Variable out
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "=== ISCC 输出 ==="
-            $out | Select-Object -Last 40
-            exit $LASTEXITCODE
+          & $iscc setup.iss 2>&1 | Tee-Object -FilePath iscc.log
+          $code = $LASTEXITCODE
+          Write-Host "ISCC exit code: $code"
+          if ($code -ne 0) {
+            Write-Host "=== ISCC log tail ==="
+            Get-Content iscc.log -Tail 40
+            exit $code
           }
           Get-ChildItem OpenGuardian-*-Setup.exe | Select-Object Name, Length
+
+      - name: Upload ISCC log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iscc-log
+          path: iscc.log
+          if-no-files-found: ignore
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

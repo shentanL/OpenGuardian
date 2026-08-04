@@ -1,0 +1,7 @@
+# 打包依赖（仅 CD 构建时安装）
+pyinstaller>=6.0
+pywebview>=5.1
+pystray>=0.19
+Pillow>=10.0
+pythonnet>=3.0
+clr-loader>=0.2

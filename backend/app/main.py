@@ -198,6 +198,50 @@ def system_info() -> dict:
         return {"error": "无法获取系统信息"}
 
 
+@app.get("/api/report")
+def export_report(scan_index: int = -1) -> dict:
+    """导出最近一次检测的 HTML 安全报告。
+
+    参数 scan_index=-1 表示最近一次，可通过 GET /api/scans 获取历史索引。
+    返回 HTML 内容，前端可保存为 .html 文件或直接展示。
+    """
+    from .report import generate_html_report
+    from .db import get_db
+    from .config_manager import get_config
+
+    db = get_db()
+    history = db.get_scan_history(limit=10)
+    if not history:
+        return {"ok": False, "error": "暂无检测记录，先运行一次检测"}
+
+    try:
+        idx = int(scan_index)
+        if idx < 0:
+            idx = len(history) + idx
+        scan = history[max(0, min(idx, len(history) - 1))]
+    except (ValueError, IndexError):
+        scan = history[-1]
+
+    risks_raw = scan.get("risks", [])
+    stats = scan.get("stats", {})
+    security_score = stats.get("security_score", 0)
+    total_raw = stats.get("total_raw", len(risks_raw))
+    verified = stats.get("verified", {})
+
+    cfg = get_config()
+    llm_provider = cfg.get("provider", "deepseek")
+
+    html = generate_html_report(
+        risks=risks_raw,
+        security_score=security_score,
+        verified=verified,
+        total_raw=total_raw,
+        llm_provider=llm_provider,
+    )
+
+    return {"ok": True, "html": html, "scan_time": scan.get("time", ""), "format": "html"}
+
+
 @app.get("/api/agents")
 def list_agents() -> dict:
     return {"agents": bus.list_agents() + [{"name": "consult", "description": "交互中枢"}]}

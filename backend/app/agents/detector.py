@@ -377,7 +377,7 @@ class DetectorAgent(BaseAgent):
                             risks.append(RiskItem(
                                 item_type="malicious_ip",
                                 name=f"{r_ip}:{rport}",
-                                detail=f"连接到威胁情报黑名单 IP {r_ip}:{rport}",
+                                detail=f"连接到威胁情报黑名单 IP {r_ip}:{rport} [源: FireHOL/ET/AlienVault]",
                                 level=RiskLevel.CRITICAL,
                                 suggestion="该 IP 在威胁情报黑名单中，立即断网并查杀！",
                                 pid=conn.pid,
@@ -387,7 +387,7 @@ class DetectorAgent(BaseAgent):
                             risks.append(RiskItem(
                                 item_type="malicious_domain",
                                 name=f"{host}:{rport}",
-                                detail=f"连接到黑名单恶意域名 {host}:{rport}",
+                                detail=f"连接到黑名单恶意域名 {host}:{rport} [源: URLhaus/自维护]",
                                 level=RiskLevel.CRITICAL,
                                 suggestion="该域名在威胁情报黑名单中，立即断网并查杀！",
                                 pid=conn.pid,

@@ -24,20 +24,40 @@ KB_DATA = BACKEND / "kb_data"
 import webview as _wv
 _WEBVIEW_HOOKS = str(Path(_wv.__file__).parent / "__pyinstaller")
 
+# 可选数据文件：存在才打包（CI 环境兼容）
+_datas = [
+    (str(FRONTEND), "frontend"),
+    (str(KB_DATA), "backend/kb_data"),
+    (str(BASE / "backend" / ".env"), "backend"),
+]
+if (BASE / "OpenGuardian.ico").exists():
+    _datas.append((str(BASE / "OpenGuardian.ico"), "."))
+if (BASE / "assets").exists():
+    _datas.append((str(BASE / "assets"), "assets"))
+
+# pythonnet 运行时（本机 .venv 或 CI site-packages，存在才打包）
+import site
+_site_candidates = [
+    BACKEND / ".venv" / "Lib" / "site-packages" / "pythonnet" / "runtime",
+    Path(site.getsitepackages()[0]) / "pythonnet" / "runtime",
+]
+_pythonnet_runtime = next((p for p in _site_candidates if p.exists()), None)
+if _pythonnet_runtime:
+    _datas.append((str(_pythonnet_runtime), "pythonnet/runtime"))
+
+_clr_candidates = [
+    BACKEND / ".venv" / "Lib" / "site-packages" / "clr_loader" / "ffi" / "dlls",
+    Path(site.getsitepackages()[0]) / "clr_loader" / "ffi" / "dlls",
+]
+_clr_dlls = next((p for p in _clr_candidates if p.exists()), None)
+if _clr_dlls:
+    _datas.append((str(_clr_dlls), "clr_loader/ffi/dlls"))
+
 a = Analysis(
     [str(BASE / "desktop_app.py")],
     pathex=[str(BACKEND)],
     binaries=[],
-    datas=[
-        (str(FRONTEND), "frontend"),
-        (str(KB_DATA), "backend/kb_data"),
-        (str(BASE / "OpenGuardian.ico"), "."),
-        (str(BASE / "assets"), "assets"),
-        (str(BASE / "backend" / ".env"), "backend"),
-        # pythonnet .NET 运行时（pywebview EdgeChromium 必需，97 DLLs）
-        (str(BACKEND / ".venv" / "Lib" / "site-packages" / "pythonnet" / "runtime"), "pythonnet/runtime"),
-        (str(BACKEND / ".venv" / "Lib" / "site-packages" / "clr_loader" / "ffi" / "dlls"), "clr_loader/ffi/dlls"),
-    ],
+    datas=_datas,
     hiddenimports=[
         # Web 框架
         "uvicorn", "uvicorn.logging", "uvicorn.loops",

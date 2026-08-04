@@ -235,26 +235,41 @@
   });
 
   /* ── Tab 3: 白名单 ── */
+  let _wlItems = [];
   async function loadWhitelist() {
     try {
       const r = await fetch("/api/whitelist");
       const d = await r.json();
-      const list = document.getElementById("wl-list");
-      const items = d.items || [];
-      if (!items.length) {
-        list.innerHTML = '<div class="wl-empty">白名单为空。添加进程名后，检测时将跳过这些进程。</div>';
-        return;
-      }
-      list.innerHTML = items.map((name) =>
-        '<div class="wl-item">' +
-        '<span class="wl-name">' + escapeHtml(name) + '</span>' +
-        '<button class="wl-del" data-name="' + escapeHtml(name) + '">✕</button>' +
-        '</div>'
-      ).join("");
+      _wlItems = d.items || [];
+      renderWhitelist("");
     } catch (err) {
       console.warn("Whitelist load failed:", err);
     }
   }
+
+  function renderWhitelist(filter) {
+    const list = document.getElementById("wl-list");
+    const countEl = document.getElementById("wl-count");
+    if (!list) return;
+    const items = filter ? _wlItems.filter((n) => n.toLowerCase().includes(filter.toLowerCase())) : _wlItems;
+    if (countEl) countEl.textContent = items.length + " 项";
+    if (!items.length) {
+      list.innerHTML = '<tr><td colspan="3" class="table-empty">' +
+        (filter ? "无匹配结果" : "白名单为空。添加进程名后，检测时将跳过这些进程。") + '</td></tr>';
+      return;
+    }
+    list.innerHTML = items.map((name) =>
+      '<tr>' +
+      '<td class="td-mono"><span class="wl-name">' + escapeHtml(name) + '</span></td>' +
+      '<td><span class="badge ok">已豁免</span></td>' +
+      '<td class="th-ops"><button class="wl-del" data-name="' + escapeHtml(name) + '" title="移除">✕</button></td>' +
+      '</tr>'
+    ).join("");
+  }
+
+  document.getElementById("wl-search")?.addEventListener("input", (e) => {
+    renderWhitelist(e.target.value.trim());
+  });
 
   document.getElementById("btn-wl-add")?.addEventListener("click", async () => {
     const input = document.getElementById("wl-input");

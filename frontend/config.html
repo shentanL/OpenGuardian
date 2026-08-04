@@ -169,7 +169,24 @@
             <svg class="ic"><use href="#ic-check"/></svg> 添加
           </button>
         </div>
-        <div id="wl-list" class="wl-list"></div>
+      </div>
+
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-list"/></svg> 白名单列表 <span class="wl-count" id="wl-count">0 项</span></div>
+        <div class="group-desc">已加入白名单的进程将跳过检测</div>
+        <div class="table-toolbar">
+          <input id="wl-search" type="text" placeholder="搜索进程名…" class="cc-input-text wl-search-input" autocomplete="off">
+        </div>
+        <table class="data-table" id="wl-table">
+          <thead>
+            <tr>
+              <th>进程名</th>
+              <th>状态</th>
+              <th class="th-ops">操作</th>
+            </tr>
+          </thead>
+          <tbody id="wl-list"></tbody>
+        </table>
       </div>
     </section>
 

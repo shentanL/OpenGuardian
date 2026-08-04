@@ -183,8 +183,30 @@ def system_info() -> dict:
         vm = psutil.virtual_memory()
         disk = psutil.disk_usage("C:")
         uptime = time.time() - _start_time if _start_time else 0
+
+        # Windows 真实版本名（Win10/11 内核版本号相同，需读注册表+Build判定）
+        import sys
+        if sys.platform == "win32":
+            import winreg
+            try:
+                key = winreg.OpenKey(
+                    winreg.HKEY_LOCAL_MACHINE,
+                    r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+                )
+                build = int(winreg.QueryValueEx(key, "CurrentBuild")[0])
+                product_name = winreg.QueryValueEx(key, "ProductName")[0]
+                winreg.CloseKey(key)
+                # Build ≥ 22000 = Windows 11（ProductName 可能因升级残留仍写 Win10）
+                if build >= 22000 and "Windows 10" in product_name:
+                    product_name = product_name.replace("Windows 10", "Windows 11")
+                product_name = f"{product_name} (Build {build})"
+            except Exception:
+                product_name = f"{platform.system()} {platform.release()}"
+        else:
+            product_name = f"{platform.system()} {platform.release()}"
+
         return {
-            "os": f"{platform.system()} {platform.release()}",
+            "os": product_name,
             "cpu_pct": psutil.cpu_percent(interval=0.3),
             "mem_pct": vm.percent,
             "mem_used_gb": round(vm.used / 1024**3, 1),

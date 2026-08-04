@@ -96,8 +96,106 @@ body {
 
 /* ═══ 主内容区 ═══ */
 .settings-main {
-  flex: 1; padding: 40px 48px; max-width: 760px;
+  flex: 1; padding: 32px 40px; max-width: 1040px;
 }
+
+/* ═══ 顶部实时状态条 ═══ */
+.status-bar {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  margin-bottom: 24px;
+}
+
+.status-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius);
+  transition: border-color 0.2s;
+}
+.status-item:hover { border-color: rgba(118,185,0,0.3); }
+
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gray-600);
+  flex-shrink: 0;
+}
+.status-dot.on { background: var(--green); box-shadow: 0 0 6px rgba(118,185,0,0.6); }
+.status-dot.off { background: var(--red); box-shadow: 0 0 6px rgba(229,32,32,0.6); }
+
+.status-lbl { color: var(--gray-600); font-size: 10px; font-family: var(--mono); letter-spacing: 1px; }
+.status-val { margin-left: auto; color: var(--gray-100); font-family: var(--mono); font-size: 11px; }
+
+/* ═══ 提供商卡片网格 ═══ */
+.provider-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px; margin-bottom: 20px;
+}
+
+.provider-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius);
+  cursor: pointer; text-align: left;
+  transition: all 0.15s;
+  font-family: var(--sans);
+}
+
+.provider-card:hover {
+  border-color: rgba(118,185,0,0.5);
+  transform: translateY(-1px);
+}
+
+.provider-card.active {
+  border-color: var(--green);
+  background: rgba(118,185,0,0.08);
+  box-shadow: 0 0 0 1px var(--green), 0 0 12px rgba(118,185,0,0.2);
+}
+
+.provider-card .pc-name {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  color: var(--gray-100);
+  display: flex; align-items: center; gap: 6px;
+}
+
+.provider-card.active .pc-name { color: var(--green); }
+
+.provider-card .pc-desc {
+  font-size: 10px; color: var(--gray-500);
+  line-height: 1.4;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+.provider-card .pc-badge {
+  margin-top: 4px;
+  font-family: var(--mono); font-size: 9px;
+  color: var(--gray-600); letter-spacing: 0.5px;
+}
+.provider-card.active .pc-badge { color: var(--green); }
+
+/* 提供商简介框 */
+.provider-desc-box {
+  margin-top: 10px; padding: 10px 12px;
+  border-left: 2px solid var(--green);
+  background: rgba(118,185,0,0.04);
+  color: var(--gray-300); font-size: 11px; line-height: 1.6;
+}
+
+/* ═══ 双栏布局 ═══ */
+.two-col {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .two-col { grid-template-columns: 1fr; }
+  .status-bar { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ═══ 设置组卡片 ═══ */
 
 .settings-panel { display: none; }
 .settings-panel.active { display: block; animation: panel-in 0.25s ease; }

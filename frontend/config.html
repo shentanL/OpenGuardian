@@ -50,6 +50,15 @@
   <!-- 内容区 -->
   <main class="settings-main">
 
+    <!-- 顶部实时状态条 -->
+    <div class="status-bar" id="status-bar">
+      <div class="status-item"><span class="status-dot" id="st-llm"></span><span class="status-lbl">LLM</span><span class="status-val" id="st-llm-val">--</span></div>
+      <div class="status-item"><span class="status-dot" id="st-db"></span><span class="status-lbl">数据库</span><span class="status-val" id="st-db-val">--</span></div>
+      <div class="status-item"><span class="status-dot" id="st-kb"></span><span class="status-lbl">威胁情报</span><span class="status-val" id="st-kb-val">--</span></div>
+      <div class="status-item"><span class="status-dot" id="st-engine"></span><span class="status-lbl">检测引擎</span><span class="status-val" id="st-engine-val">--</span></div>
+      <div class="status-item"><span class="status-dot" id="st-version"></span><span class="status-lbl">版本</span><span class="status-val" id="st-version-val">--</span></div>
+    </div>
+
     <!-- Tab 1: AI 服务 -->
     <section class="settings-panel active" id="panel-provider">
       <div class="panel-head">
@@ -57,44 +66,41 @@
         <p class="panel-sub">选择 AI 提供商并配置 API Key — 支持 25 家主流服务</p>
       </div>
 
-      <div class="group-card">
-        <div class="group-title"><svg class="ic"><use href="#ic-bolt"/></svg> 提供商</div>
-        <div class="group-desc">选择后自动加载对应模型列表与端点</div>
-
-        <div class="form-group">
-          <label>提供商</label>
-          <select id="provider-select" class="cc-select"></select>
-          <div id="provider-desc" class="form-hint"></div>
-        </div>
+      <div class="provider-grid" id="provider-grid">
+        <!-- 提供商卡片（JS 渲染） -->
       </div>
 
-      <div class="group-card">
-        <div class="group-title"><svg class="ic"><use href="#ic-lock"/></svg> 凭证</div>
-        <div class="group-desc">API Key 保存后自动加密存储（机器绑定），不泄露明文</div>
+      <div class="two-col">
+        <div class="group-card">
+          <div class="group-title"><svg class="ic"><use href="#ic-lock"/></svg> 凭证</div>
+          <div class="group-desc">API Key 保存后自动加密存储（机器绑定），不泄露明文</div>
 
-        <div class="form-group" id="api-key-group">
-          <label>API Key</label>
-          <div class="cc-input-wrap">
-            <input id="api-key" class="cc-input-text" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" spellcheck="false">
-            <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
+          <div class="form-group" id="api-key-group">
+            <label>API Key</label>
+            <div class="cc-input-wrap">
+              <input id="api-key" class="cc-input-text" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" spellcheck="false">
+              <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
+            </div>
+            <div class="form-hint" id="key-hint"></div>
           </div>
-          <div class="form-hint" id="key-hint"></div>
+
+          <div class="form-group" id="custom-url-group" style="display:none">
+            <label>自定义 API 地址</label>
+            <input id="custom-url" type="text" placeholder="https://your-api.com" class="cc-input-text" autocomplete="off">
+          </div>
         </div>
 
-        <div class="form-group" id="custom-url-group" style="display:none">
-          <label>自定义 API 地址</label>
-          <input id="custom-url" type="text" placeholder="https://your-api.com" class="cc-input-text" autocomplete="off">
-        </div>
-      </div>
+        <div class="group-card">
+          <div class="group-title"><svg class="ic"><use href="#ic-cpu"/></svg> 模型</div>
+          <div class="group-desc">下拉选择官方模型，或手动输入自定义模型名</div>
 
-      <div class="group-card">
-        <div class="group-title"><svg class="ic"><use href="#ic-cpu"/></svg> 模型</div>
-        <div class="group-desc">下拉选择官方模型，或手动输入自定义模型名</div>
+          <div class="form-group">
+            <label>模型 <span class="label-tip">下拉选择或手动输入</span></label>
+            <select id="model-select" class="cc-select"></select>
+            <input id="model-custom" type="text" placeholder="或手动输入模型名…" class="cc-input-text" style="margin-top:6px">
+          </div>
 
-        <div class="form-group">
-          <label>模型 <span class="label-tip">下拉选择或手动输入</span></label>
-          <select id="model-select" class="cc-select"></select>
-          <input id="model-custom" type="text" placeholder="或手动输入模型名…" class="cc-input-text" style="margin-top:6px">
+          <div id="provider-desc-box" class="provider-desc-box"></div>
         </div>
       </div>
 

@@ -1,43 +1,42 @@
 {
   "sources": {
     "URLhaus": {
-      "total_raw": 828,
-      "added": 1,
-      "updated": "2026-08-04 13:42:25",
+      "total_raw": 838,
+      "added": 81,
+      "updated": "2026-08-04 16:26:30",
       "ok": true
     },
     "FireHOL_level1": {
       "total_raw": 4579,
       "added": 0,
-      "updated": "2026-08-04 13:42:27",
+      "updated": "2026-08-04 16:26:31",
       "ok": true
     },
     "FireHOL_level3": {
       "total_raw": 13173,
       "added": 0,
-      "updated": "2026-08-04 13:42:28",
+      "updated": "2026-08-04 16:26:32",
       "ok": true
     },
     "EmergingThreats_compromised": {
-      "total_raw": 559,
-      "added": 0,
-      "updated": "2026-08-04 13:42:29",
-      "ok": true
+      "ok": false,
+      "error": "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.",
+      "updated": "2026-08-04 16:26:36"
     },
     "AlienVault_OTX": {
       "total_raw": 609,
       "added": 0,
-      "updated": "2026-08-04 13:42:35",
+      "updated": "2026-08-04 16:26:41",
       "ok": true
     },
     "MalwareBazaar": {
       "total": 5795,
-      "updated": "2026-08-04 13:42:42",
+      "updated": "2026-08-04 16:27:00",
       "ok": true
     }
   },
-  "last_update": "2026-08-04 13:42:19",
+  "last_update": "2026-08-04 16:26:27",
   "ok": true,
-  "domain_count": 3887,
+  "domain_count": 3967,
   "ip_count": 39438
 }

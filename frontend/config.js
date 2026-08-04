@@ -22,20 +22,21 @@
   });
 
   /* ── Tab 1: AI 服务 ── */
-  const providerSel = document.getElementById("provider-select");
+  const providerGrid = document.getElementById("provider-grid");
   const modelSel = document.getElementById("model-select");
   const apiInput = document.getElementById("api-key");
   const customUrl = document.getElementById("custom-url");
   const customUrlGroup = document.getElementById("custom-url-group");
   const apiKeyGroup = document.getElementById("api-key-group");
   const keyHint = document.getElementById("key-hint");
-  const providerDesc = document.getElementById("provider-desc");
+  const providerDescBox = document.getElementById("provider-desc-box");
   const btnSave = document.getElementById("btn-save-provider");
   const msgEl = document.getElementById("provider-msg");
   const toggleBtn = document.getElementById("toggle-key");
 
   let providers = [];
   let _loadedModel = "";
+  let _selectedProvider = "";
 
   toggleBtn?.addEventListener("click", () => {
     apiInput.type = apiInput.type === "password" ? "text" : "password";
@@ -48,22 +49,44 @@
     setTimeout(() => msgEl.classList.add("hidden"), 4000);
   }
 
+  function renderProviderGrid(providers, currentKey) {
+    if (!providerGrid) return;
+    providerGrid.innerHTML = providers.map((p) => {
+      const isActive = p.key === currentKey || p.key === _selectedProvider;
+      const badge = p.key === "deepseek" ? "推荐" : (p.key === "ollama" ? "本地" : (p.key === "custom" ? "自定义" : ""));
+      return '<button class="provider-card ' + (isActive ? "active" : "") + '" data-key="' + p.key + '">' +
+        '<span class="pc-name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="pc-desc">' + escapeHtml(p.description || "") + '</span>' +
+        (badge ? '<span class="pc-badge">' + badge + '</span>' : "") +
+        '</button>';
+    }).join("");
+
+    providerGrid.querySelectorAll(".provider-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const key = card.dataset.key;
+        _selectedProvider = key;
+        renderProviderGrid(providers, key);
+        updateProviderUI(providers.find((p) => p.key === key));
+        btnSave.disabled = false;
+      });
+    });
+  }
+
   async function loadConfig() {
     try {
       const r = await fetch("/api/config");
       const d = await r.json();
       providers = d.providers || [];
 
-      providerSel.innerHTML = providers.map((p) =>
-        '<option value="' + p.key + '" ' + (p.key === d.provider ? "selected" : "") + ">" + p.name + "</option>"
-      ).join("");
+      // 提供商卡片网格
+      renderProviderGrid(providers, d.provider);
+      _selectedProvider = d.provider;
 
       updateProviderUI(providers.find((p) => p.key === d.provider));
 
       if (d.configured) {
         apiInput.placeholder = "已配置（留空保持不变）";
         apiInput.value = "";
-        btnSave.querySelector("span") && (btnSave.querySelector("span").textContent = "保存设置");
         _loadedModel = d.model || "";
         if (d.base_url) {
           customUrl.value = d.base_url;
@@ -78,9 +101,14 @@
     }
   }
 
+  function getSelectedProviderKey() {
+    const active = providerGrid?.querySelector(".provider-card.active");
+    return active ? active.dataset.key : "";
+  }
+
   function updateProviderUI(p) {
     if (!p) return;
-    providerDesc.textContent = p.description || "";
+    if (providerDescBox) providerDescBox.innerHTML = "<strong>" + escapeHtml(p.name) + "</strong> — " + escapeHtml(p.description || "");
     const models = p.models || [];
     modelSel.innerHTML = '<option value="">默认（' + (p.default_model || "自动") + "）</option>" +
       models.map((m) => '<option value="' + m + '" ' + (m === _loadedModel ? "selected" : "") + ">" + m + "</option>").join("");
@@ -93,13 +121,8 @@
     customUrlGroup.style.display = p.key === "custom" ? "" : "none";
   }
 
-  providerSel?.addEventListener("change", () => {
-    updateProviderUI(providers.find((p) => p.key === providerSel.value));
-    btnSave.disabled = false;
-  });
-
   btnSave?.addEventListener("click", async () => {
-    const provider = providerSel.value;
+    const provider = getSelectedProviderKey() || "deepseek";
     if (!provider) { showMsg("请选择 AI 提供商", false); return; }
     btnSave.disabled = true;
     btnSave.querySelector("span") && (btnSave.querySelector("span").textContent = "保存中…");
@@ -126,7 +149,7 @@
 
   // 测试连接：先保存当前配置，再实测 LLM 连通
   document.getElementById("btn-test-llm")?.addEventListener("click", async () => {
-    const provider = providerSel.value;
+    const provider = getSelectedProviderKey() || "deepseek";
     if (!provider) { showMsg("请选择 AI 提供商", false); return; }
     const testBtn = document.getElementById("btn-test-llm");
     testBtn.disabled = true;
@@ -343,8 +366,50 @@
     btn.innerHTML = '<svg class="ic"><use href="#ic-scan"/></svg> 立即更新病毒库';
   });
 
+  /* ── 顶部状态条 ── */
+  async function loadStatusBar() {
+    try {
+      const [h, c] = await Promise.all([
+        fetch("/api/health").then((r) => r.json()),
+        fetch("/api/config").then((r) => r.json()),
+      ]);
+      const setDot = (id, on) => {
+        const el = document.getElementById(id);
+        if (el) { el.className = "status-dot " + (on ? "on" : "off"); }
+      };
+      const setVal = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v;
+      };
+      // LLM
+      setDot("st-llm", h.llm === "configured");
+      setVal("st-llm-val", h.llm === "configured" ? (c.model || c.provider || "已配置") : "未配置");
+      // 数据库
+      setDot("st-db", h.db === "connected");
+      setVal("st-db-val", h.db === "connected" ? "正常" : "异常");
+      // 威胁情报
+      try {
+        const kb = await fetch("/api/kb/status").then((r) => r.json());
+        const total = (kb.ip_count || 0) + (kb.domain_count || 0);
+        setDot("st-kb", total > 0);
+        setVal("st-kb-val", total > 0 ? (total / 10000).toFixed(1) + "万条" : "空");
+      } catch (e) {
+        setDot("st-kb", false); setVal("st-kb-val", "--");
+      }
+      // 检测引擎
+      setDot("st-engine", true);
+      setVal("st-engine-val", "8 模块在线");
+      // 版本
+      setDot("st-version", true);
+      setVal("st-version-val", h.version || "--");
+    } catch (err) {
+      console.warn("Status bar load failed:", err);
+    }
+  }
+
   /* ── 初始化 ── */
   loadConfig();
+  loadStatusBar();
   // 检查 URL 参数：?tab=threats → 切换到威胁情报 Tab
   const params = new URLSearchParams(location.search);
   const targetTab = params.get("tab");

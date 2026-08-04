@@ -29,3 +29,11 @@ Thumbs.db
 *.db-wal
 *.sqlite3
 logs/
+
+# 运行时文件
+kb_data/.checkpoints.json
+kb_data/.hash_bloom.bin
+kb_data/.ingestion_status.json
+kb_data/.update_status.json
+kb_data/firehol.zip
+*.cve_cache.json

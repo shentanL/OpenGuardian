@@ -27,6 +27,19 @@ RETRY_BASE_DELAY = 1.0  # 秒
 
 
 class LLMClient:
+    def _offline_reply(self, messages: list[dict]) -> str:
+        """LLM 彻底不可用时，用离线规则引擎生成有意义的回复。"""
+        try:
+            from .offline_fallback import smart_reply
+            user_text = ""
+            for m in reversed(messages or []):
+                if m.get("role") == "user":
+                    user_text = str(m.get("content", ""))
+                    break
+            return smart_reply(user_text or "")
+        except Exception:
+            return FALLBACK_AI_RETRY
+
     def __init__(self) -> None:
         from ..config_manager import get_api_key, get_base_url, get_format, get_model
 
@@ -226,7 +239,8 @@ class LLMClient:
         if text:
             yield text
         else:
-            yield FALLBACK_AI_RETRY
+            # 彻底失败 → 离线智能降级（规则引擎 + 知识库，非"废物"文案）
+            yield self._offline_reply(messages)
 
 
 # 全局单例（线程安全）

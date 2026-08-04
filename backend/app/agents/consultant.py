@@ -368,6 +368,21 @@ class ConsultantAgent(BaseAgent):
             if not r.attack_tech:
                 r.attack_tech = get_technique_display(r.item_type)
             enriched_risks.append(r)
+        # 保存检测记录到 scan_history（供报告导出/历史对比）
+        try:
+            from ..db import get_db
+            from ..security import assess_security
+            sec = assess_security(enriched_risks)
+            db = get_db()
+            db.add_scan(
+                total_risks=len(enriched_risks),
+                high_risks=sec.get("high", 0),
+                summary=reply[:200],
+                risks=[r.model_dump() for r in enriched_risks],
+            )
+        except Exception:
+            pass
+
         return AgentResult(
             agent=self.name,
             success=True,

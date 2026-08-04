@@ -75,6 +75,10 @@ a = Analysis(
         "app.kb.vector_search", "app.kb.fuzzy_hash",
         "app.agents.behavioral",
         "app.llm.offline_fallback",
+        # 新增模块（v0.7.0）
+        "app.kb.attack_map", "app.kb.geoip",
+        "app.agents.credential", "app.agents.fixer",
+        "app.report",
         # pywebview（仅 Windows EdgeChromium 后端）
         "webview",
         "webview.platforms.edgechromium",

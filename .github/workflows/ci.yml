@@ -22,6 +22,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      - name: Create test config
+        run: echo '{"provider":"deepseek","api_key":"test-key","base_url":"https://api.deepseek.com","model":"deepseek-v4-flash"}' > config.json
+        shell: bash
+
       - name: Run unit tests
         working-directory: backend
         run: python -m unittest discover -s tests -p "test_*.py" -v

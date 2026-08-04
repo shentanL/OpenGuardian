@@ -5,14 +5,14 @@
     "eset": {
       "ok": true,
       "count": 5795,
-      "updated": "2026-08-04 22:30:00"
+      "updated": "2026-08-04 23:18:04"
     },
     "malwarebazaar": {
       "ok": true,
       "count": 0,
-      "updated": "2026-08-04 22:30:00"
+      "updated": "2026-08-04 23:18:04"
     }
   },
-  "last_update": "2026-08-04 22:30:00",
+  "last_update": "2026-08-04 23:18:04",
   "bloom_size_kb": 117.0
 }

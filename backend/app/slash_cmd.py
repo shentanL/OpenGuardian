@@ -9,7 +9,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from ..schemas import AgentResult, Intent
+from .schemas import AgentResult, Intent
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def handle_command(user_input: str, consultant) -> Optional[AgentResult]:
                 message="用法: `/fix <风险类型>`，如 `/fix vuln_smb1`。",
                 data={"intent": "consult"},
             )
-        from .fixer import execute_fix
+        from .agents.fixer import execute_fix
         result = execute_fix(item_type)
         if result["ok"]:
             return AgentResult(

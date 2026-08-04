@@ -1,22 +1,22 @@
 {
   "URLhaus": {
     "etag": "",
-    "last_ok": "2026-08-04 23:18:00"
+    "last_ok": "2026-08-04 23:40:02"
   },
   "FireHOL_level1": {
     "etag": "",
-    "last_ok": "2026-08-04 23:18:01"
+    "last_ok": "2026-08-04 23:40:04"
   },
   "FireHOL_level3": {
     "etag": "",
-    "last_ok": "2026-08-04 23:18:02"
+    "last_ok": "2026-08-04 23:40:04"
   },
   "EmergingThreats_compromised": {
     "etag": "",
-    "last_ok": "2026-08-04 23:18:03"
+    "last_ok": "2026-08-04 23:40:05"
   },
   "AlienVault_OTX": {
     "etag": "",
-    "last_ok": "2026-08-04 23:18:04"
+    "last_ok": "2026-08-04 23:40:06"
   }
 }

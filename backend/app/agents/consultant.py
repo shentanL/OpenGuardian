@@ -368,6 +368,17 @@ class ConsultantAgent(BaseAgent):
             refl,
             total_raw=len(raw_risks),
         )
+        # 攻击链可视化（TTP 链条文本——追加到最终消息）
+        try:
+            from .attack_chain_viz import build_attack_chain, chain_to_text
+            all_risk_dicts = [r.risk.model_dump() if hasattr(r, 'risk') else r.model_dump()
+                             for r in all_risks]
+            attack_chain = build_attack_chain(all_risk_dicts)
+            chain_text = chain_to_text(attack_chain)
+            if chain_text and "未识别" not in chain_text:
+                reply += "\n\n" + chain_text
+        except Exception:
+            pass
         # 注入 MITRE ATT&CK 映射 + 提取纯 RiskItem 列表
         from ..kb.attack_map import get_technique_display
         enriched_risks: list = []

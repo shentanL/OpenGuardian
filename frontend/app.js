@@ -820,6 +820,28 @@ async function loadDashboard() {
     window.location.href = "/config?mode=settings";
   });
 
+  // 报告下载按钮 → 弹出格式选择
+  document.getElementById("btn-report")?.addEventListener("click", async () => {
+    const fmt = confirm("是否导出 SARIF 格式（可导入 GitHub Code Scanning）？\n点「确定」= SARIF，点「取消」= HTML") ? "sarif" : "html";
+    try {
+      const r = await fetch(`/api/report?format=${fmt}`);
+      const d = await r.json();
+      if (!d.ok) { window.OGNotify?.toast("warn", "报告失败", d.error); return; }
+      const content = d.sarif || d.html || "";
+      const ext = fmt === "sarif" ? "sarif" : "html";
+      const mime = "text/" + (fmt === "sarif" ? "json" : "html");
+      const blob = new Blob([content], {type: mime});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `OpenGuardian-报告-${new Date().toISOString().slice(0,10)}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      window.OGNotify?.toast("ok", "报告已下载", `${ext.toUpperCase()} 格式`);
+    } catch (e) {
+      window.OGNotify?.toast("err", "下载失败", e.message);
+    }
+  });
+
   // 会话初始化：有历史会话则恢复，否则欢迎消息
   loadSessions();
   if (currentSessionId) {

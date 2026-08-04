@@ -374,10 +374,13 @@ class DetectorAgent(BaseAgent):
                         from ..kb.blacklists import is_malicious_domain, is_malicious_ip
 
                         if is_malicious_ip(r_ip):
+                            from ..kb.geoip import enrich_risk_detail
+                            detail = enrich_risk_detail(
+                                f"连接到威胁情报黑名单 IP {r_ip}:{rport} [源: FireHOL/ET/AlienVault]", r_ip)
                             risks.append(RiskItem(
                                 item_type="malicious_ip",
                                 name=f"{r_ip}:{rport}",
-                                detail=f"连接到威胁情报黑名单 IP {r_ip}:{rport} [源: FireHOL/ET/AlienVault]",
+                                detail=detail,
                                 level=RiskLevel.CRITICAL,
                                 suggestion="该 IP 在威胁情报黑名单中，立即断网并查杀！",
                                 pid=conn.pid,

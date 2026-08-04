@@ -200,11 +200,7 @@ def system_info() -> dict:
 
 @app.get("/api/report")
 def export_report(scan_index: int = -1) -> dict:
-    """导出最近一次检测的 HTML 安全报告。
-
-    参数 scan_index=-1 表示最近一次，可通过 GET /api/scans 获取历史索引。
-    返回 HTML 内容，前端可保存为 .html 文件或直接展示。
-    """
+    """导出最近一次检测的 HTML 安全报告。"""
     from .report import generate_html_report
     from .db import get_db
     from .config_manager import get_config
@@ -240,6 +236,16 @@ def export_report(scan_index: int = -1) -> dict:
     )
 
     return {"ok": True, "html": html, "scan_time": scan.get("time", ""), "format": "html"}
+
+
+@app.post("/api/fix")
+def fix_risk(payload: dict) -> dict:
+    """一键修复：根据风险类型执行安全系统配置。"""
+    item_type = str(payload.get("item_type", "")).strip()
+    if not item_type:
+        return {"ok": False, "error": "缺少 item_type 参数"}
+    from .agents.fixer import execute_fix
+    return execute_fix(item_type)
 
 
 @app.get("/api/agents")

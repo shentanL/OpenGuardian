@@ -495,7 +495,7 @@ body {
 .sw-port { background: #f5b83d; }
 .sw-resource { background: #3f8500; }
 .sw-asset { background: #76b900; }
-/* res-chart + legend styles merged into enhanced section below */
+/* ═══ KPI 样式 ═══ */
 /* ═══ 全局细节（GitHub 风格）═══ */
 * { scrollbar-width: thin; scrollbar-color: #2a2a2a transparent; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }

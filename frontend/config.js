@@ -43,7 +43,7 @@
 
   function showMsg(text, ok) {
     msgEl.textContent = text;
-    msgEl.className = "form-msg " + (ok ? "success" : "error");
+    msgEl.className = "form-msg " + (ok ? "ok" : "err");
     msgEl.classList.remove("hidden");
     setTimeout(() => msgEl.classList.add("hidden"), 4000);
   }
@@ -124,6 +124,40 @@
     btnSave.querySelector("span") && (btnSave.querySelector("span").textContent = "保存 AI 设置");
   });
 
+  // 测试连接：先保存当前配置，再实测 LLM 连通
+  document.getElementById("btn-test-llm")?.addEventListener("click", async () => {
+    const provider = providerSel.value;
+    if (!provider) { showMsg("请选择 AI 提供商", false); return; }
+    const testBtn = document.getElementById("btn-test-llm");
+    testBtn.disabled = true;
+    testBtn.classList.add("testing");
+    testBtn.querySelector("span") && (testBtn.querySelector("span").textContent = "测试中…");
+    showMsg("正在保存配置并测试连接…", true);
+    try {
+      // 1) 保存
+      await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: provider,
+          api_key: apiInput.value.trim(),
+          base_url: customUrl.value.trim(),
+          model: modelSel.value || document.getElementById("model-custom").value.trim(),
+        }),
+      });
+      // 2) 实测
+      const r = await fetch("/api/llm/test", { method: "POST" });
+      const d = await r.json();
+      if (d.ok) showMsg("✅ 连接成功！模型返回：" + (d.reply || "正常响应"), true);
+      else showMsg("❌ 连接失败：" + (d.error || "未知错误") + "（检查 Key/网络/模型名）", false);
+    } catch (err) {
+      showMsg("❌ 测试失败：" + err.message, false);
+    }
+    testBtn.disabled = false;
+    testBtn.classList.remove("testing");
+    testBtn.querySelector("span") && (testBtn.querySelector("span").textContent = "测试连接");
+  });
+
   /* ── Tab 2: 威胁情报 ── */
   async function loadKbStatus() {
     try {
@@ -142,11 +176,12 @@
       feedList.innerHTML = feeds.map((f) => {
         const src = sources[f.name] || {};
         const ok = src.ok !== false;
+        const badgeCls = ok ? "ok" : "err";
+        const badgeTxt = ok ? "在线" : "异常";
         return '<div class="feed-item">' +
-          '<div class="feed-status ' + (ok ? "ok" : "err") + '"></div>' +
           '<span class="feed-name">' + escapeHtml(f.name) + '</span>' +
           '<span class="feed-type">' + escapeHtml(f.type || f.ioc_type || "") + '</span>' +
-          '<span class="feed-info">' + escapeHtml(f.description || "") + '</span>' +
+          '<span class="badge ' + badgeCls + '">' + badgeTxt + '</span>' +
           '<span class="feed-count">' + (src.total ? src.total.toLocaleString() : "--") + '</span>' +
           '</div>';
       }).join("");
@@ -261,6 +296,10 @@
       document.getElementById("vdb-bloom").textContent = hcount > 0 ? "已激活" : "待构建";
       document.getElementById("vdb-sources").textContent = "2 (ESET + MalwareBazaar)";
       document.getElementById("vdb-updated").textContent = (d.last_update || "--").slice(0, 16);
+      // Bloom 进度条（按 10000 哈希 = 100% 视觉基线）
+      var bloomPct = Math.min(100, Math.round((hcount / 10000) * 100));
+      var bloomBar = document.getElementById("vdb-bloom-bar");
+      if (bloomBar) bloomBar.style.width = bloomPct + "%";
 
       var sourceList = document.getElementById("virus-source-list");
       var vdbSources = sources.eset || sources.malwarebazaar ? [
@@ -272,11 +311,12 @@
       }
       sourceList.innerHTML = vdbSources.length
         ? vdbSources.map(function (s) {
+            var bCls = s.ok ? "ok" : "err";
+            var bTxt = s.ok ? "在线" : "异常";
             return '<div class="feed-item">' +
-              '<div class="feed-status ' + (s.ok ? "ok" : "err") + '"></div>' +
               '<span class="feed-name">' + escapeHtml(s.name) + '</span>' +
               '<span class="feed-type">SHA256</span>' +
-              '<span class="feed-info">' + escapeHtml(s.desc) + '</span>' +
+              '<span class="badge ' + bCls + '">' + bTxt + '</span>' +
               '<span class="feed-count">' + (typeof s.total === "number" ? s.total.toLocaleString() : s.total) + '</span>' +
               '</div>';
           }).join("")

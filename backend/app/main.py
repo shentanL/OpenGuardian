@@ -154,6 +154,26 @@ def set_config(payload: dict) -> dict:
     )
 
 
+@app.post("/api/llm/test")
+async def test_llm() -> dict:
+    """实测 LLM 连通性：调用当前配置的模型发送测试消息。"""
+    try:
+        from .llm.client import get_llm_client
+        llm = get_llm_client()
+        if not llm.available:
+            return {"ok": False, "error": "未配置 API Key"}
+        reply = await llm.chat(
+            [{"role": "user", "content": "请只回复：连接成功"}],
+            max_tokens=64,
+            temperature=0.1,
+        )
+        if reply:
+            return {"ok": True, "reply": reply[:120]}
+        return {"ok": False, "error": "模型无响应（检查模型名或网络）"}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": str(exc)[:200]}
+
+
 @app.get("/api/agents")
 def list_agents() -> dict:
     return {"agents": bus.list_agents() + [{"name": "consult", "description": "交互中枢"}]}

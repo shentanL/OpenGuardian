@@ -4,35 +4,42 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OpenGuardian · 设置</title>
-  <link rel="stylesheet" href="/static/config.css">
-  <script src="/static/icons.js" defer></script>
-  <script src="/static/background.js" defer></script>
+  <link rel="stylesheet" href="/static/config.css?v=0.7.0">
+  <script src="/static/icons.js?v=0.7.0" defer></script>
+  <script src="/static/background.js?v=0.7.0" defer></script>
 </head>
 <body>
 <canvas id="bg-canvas" class="bg-canvas"></canvas>
 
 <div class="settings-container">
-  <!-- 侧边 Tab 栏 -->
+  <!-- 侧边 Tab 栏（分组） -->
   <nav class="settings-nav">
     <div class="sn-brand">
       <svg class="ic"><use href="#ic-shield"/></svg>
       <span>OpenGuardian</span>
     </div>
+
+    <div class="sn-group">AI 服务</div>
     <button class="sn-tab active" data-tab="provider">
-      <svg class="ic"><use href="#ic-bolt"/></svg> AI 服务
+      <svg class="ic"><use href="#ic-bolt"/></svg> AI 提供商
     </button>
+
+    <div class="sn-group">数据防护</div>
     <button class="sn-tab" data-tab="threats">
       <svg class="ic"><use href="#ic-radar"/></svg> 威胁情报
+    </button>
+    <button class="sn-tab" data-tab="virusdb">
+      <svg class="ic"><use href="#ic-shield"/></svg> 病毒库
     </button>
     <button class="sn-tab" data-tab="whitelist">
       <svg class="ic"><use href="#ic-check"/></svg> 白名单
     </button>
-    <button class="sn-tab" data-tab="virusdb">
-      <svg class="ic"><use href="#ic-bolt"/></svg> 病毒库
-    </button>
+
+    <div class="sn-group">系统</div>
     <button class="sn-tab" data-tab="about">
       <svg class="ic"><use href="#ic-book"/></svg> 关于
     </button>
+
     <div class="sn-footer">
       <a href="/" class="sn-back">
         <svg class="ic"><use href="#ic-chat"/></svg> 返回助手
@@ -45,120 +52,174 @@
 
     <!-- Tab 1: AI 服务 -->
     <section class="settings-panel active" id="panel-provider">
-      <h2>AI 服务配置</h2>
-      <p class="panel-sub">选择 AI 提供商并配置 API Key</p>
-
-      <div class="form-group">
-        <label>提供商</label>
-        <select id="provider-select" class="cc-select"></select>
-        <div id="provider-desc" class="form-hint"></div>
+      <div class="panel-head">
+        <h2><svg class="ic"><use href="#ic-bolt"/></svg> AI 服务配置</h2>
+        <p class="panel-sub">选择 AI 提供商并配置 API Key — 支持 25 家主流服务</p>
       </div>
 
-      <div class="form-group" id="api-key-group">
-        <label>API Key</label>
-        <div class="cc-input-wrap">
-          <input id="api-key" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" spellcheck="false">
-          <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-bolt"/></svg> 提供商</div>
+        <div class="group-desc">选择后自动加载对应模型列表与端点</div>
+
+        <div class="form-group">
+          <label>提供商</label>
+          <select id="provider-select" class="cc-select"></select>
+          <div id="provider-desc" class="form-hint"></div>
         </div>
-        <div class="form-hint" id="key-hint"></div>
       </div>
 
-      <div class="form-group" id="custom-url-group" style="display:none">
-        <label>自定义 API 地址</label>
-        <input id="custom-url" type="text" placeholder="https://your-api.com" class="cc-input-text" autocomplete="off">
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-lock"/></svg> 凭证</div>
+        <div class="group-desc">API Key 保存后自动加密存储（机器绑定），不泄露明文</div>
+
+        <div class="form-group" id="api-key-group">
+          <label>API Key</label>
+          <div class="cc-input-wrap">
+            <input id="api-key" class="cc-input-text" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" spellcheck="false">
+            <button id="toggle-key" class="cc-eye" title="显示/隐藏">👁</button>
+          </div>
+          <div class="form-hint" id="key-hint"></div>
+        </div>
+
+        <div class="form-group" id="custom-url-group" style="display:none">
+          <label>自定义 API 地址</label>
+          <input id="custom-url" type="text" placeholder="https://your-api.com" class="cc-input-text" autocomplete="off">
+        </div>
       </div>
 
-      <div class="form-group">
-        <label>模型 <span class="label-tip">下拉选择或手动输入</span></label>
-        <select id="model-select" class="cc-select"></select>
-        <input id="model-custom" type="text" placeholder="或手动输入模型名…" class="cc-input-text" style="margin-top:6px">
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-cpu"/></svg> 模型</div>
+        <div class="group-desc">下拉选择官方模型，或手动输入自定义模型名</div>
+
+        <div class="form-group">
+          <label>模型 <span class="label-tip">下拉选择或手动输入</span></label>
+          <select id="model-select" class="cc-select"></select>
+          <input id="model-custom" type="text" placeholder="或手动输入模型名…" class="cc-input-text" style="margin-top:6px">
+        </div>
       </div>
 
-      <button id="btn-save-provider" class="cc-btn">
-        <svg class="ic"><use href="#ic-send"/></svg> 保存 AI 设置
-      </button>
-      <div id="provider-msg" class="form-msg hidden"></div>
+      <div class="group-card">
+        <div class="form-group" style="margin-bottom:0">
+          <button id="btn-save-provider" class="cc-btn">
+            <svg class="ic"><use href="#ic-send"/></svg> 保存 AI 设置
+          </button>
+          <button id="btn-test-llm" class="cc-btn-test">
+            <svg class="ic"><use href="#ic-scan"/></svg> 测试连接
+          </button>
+        </div>
+        <div id="provider-msg" class="form-msg hidden"></div>
+      </div>
     </section>
 
     <!-- Tab 2: 威胁情报 -->
     <section class="settings-panel" id="panel-threats">
-      <h2>威胁情报管理</h2>
-      <p class="panel-sub">多源威胁情报 Feed 摄入状态与手动控制</p>
-
-      <div class="kb-actions">
-        <button id="btn-refresh-kb" class="cc-btn-outline">
-          <svg class="ic"><use href="#ic-scan"/></svg> 立即刷新所有 Feed
-        </button>
-        <span id="kb-refresh-msg" class="inline-msg hidden"></span>
+      <div class="panel-head">
+        <h2><svg class="ic"><use href="#ic-radar"/></svg> 威胁情报管理</h2>
+        <p class="panel-sub">多源威胁情报 Feed 摄入状态与手动控制 — 自动更新每 6 小时</p>
       </div>
 
-      <div class="kb-stats-row" id="kb-stats">
-        <div class="kb-stat-card"><div class="kb-num" id="kb-domains">--</div><div class="kb-lbl">恶意域名</div></div>
-        <div class="kb-stat-card"><div class="kb-num" id="kb-ips">--</div><div class="kb-lbl">恶意 IP</div></div>
-        <div class="kb-stat-card"><div class="kb-num" id="kb-hashes">--</div><div class="kb-lbl">病毒哈希</div></div>
-        <div class="kb-stat-card"><div class="kb-num" id="kb-feeds">--</div><div class="kb-lbl">Feed 源</div></div>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-scan"/></svg> 手动刷新</div>
+        <div class="group-desc">立即拉取所有 Feed 源的最新威胁情报</div>
+        <div class="kb-actions" style="display:flex;align-items:center">
+          <button id="btn-refresh-kb" class="cc-btn-outline">
+            <svg class="ic"><use href="#ic-scan"/></svg> 立即刷新所有 Feed
+          </button>
+          <span id="kb-refresh-msg" class="inline-msg hidden"></span>
+        </div>
       </div>
 
-      <h3>Feed 源状态</h3>
-      <div id="feed-list" class="feed-list"></div>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-bar"/></svg> 情报规模</div>
+        <div class="group-desc">当前已加载的威胁情报数据量</div>
+        <div class="kb-stats-row" id="kb-stats">
+          <div class="kb-stat-card"><div class="kb-num" id="kb-domains">--</div><div class="kb-lbl">恶意域名</div></div>
+          <div class="kb-stat-card"><div class="kb-num" id="kb-ips">--</div><div class="kb-lbl">恶意 IP</div></div>
+          <div class="kb-stat-card"><div class="kb-num" id="kb-hashes">--</div><div class="kb-lbl">病毒哈希</div></div>
+          <div class="kb-stat-card"><div class="kb-num" id="kb-feeds">--</div><div class="kb-lbl">Feed 源</div></div>
+        </div>
+      </div>
 
-      <div class="kb-last-update" id="kb-last">上次更新：--</div>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-status"/></svg> Feed 源状态</div>
+        <div id="feed-list" class="feed-list"></div>
+        <div class="kb-last-update" id="kb-last">上次更新：--</div>
+      </div>
     </section>
 
     <!-- Tab 3: 白名单 -->
     <section class="settings-panel" id="panel-whitelist">
-      <h2>进程白名单</h2>
-      <p class="panel-sub">白名单中的进程在检测时将被跳过，不会被标记为风险</p>
-
-      <div class="wl-add-row">
-        <input id="wl-input" type="text" placeholder="输入进程名（如 my-dev-tool.exe）" class="cc-input-text" autocomplete="off">
-        <button id="btn-wl-add" class="cc-btn-sm">
-          <svg class="ic"><use href="#ic-check"/></svg> 添加
-        </button>
+      <div class="panel-head">
+        <h2><svg class="ic"><use href="#ic-check"/></svg> 进程白名单</h2>
+        <p class="panel-sub">白名单中的进程在检测时将被跳过，不会被标记为风险</p>
       </div>
 
-      <div id="wl-list" class="wl-list"></div>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-plus"/></svg> 添加白名单</div>
+        <div class="group-desc">输入进程名（如 my-dev-tool.exe）后点击添加</div>
+        <div class="wl-add-row">
+          <input id="wl-input" type="text" placeholder="输入进程名（如 my-dev-tool.exe）" class="cc-input-text" autocomplete="off">
+          <button id="btn-wl-add" class="cc-btn-sm">
+            <svg class="ic"><use href="#ic-check"/></svg> 添加
+          </button>
+        </div>
+        <div id="wl-list" class="wl-list"></div>
+      </div>
     </section>
 
     <!-- Tab 4: 病毒库 -->
     <section class="settings-panel" id="panel-virusdb">
-      <h2>病毒库管理</h2>
-      <p class="panel-sub">恶意软件哈希签名数据库 — 多源聚合 + Bloom 加速</p>
-
-      <div class="kb-stats-row" id="virus-stats">
-        <div class="kb-stat-card"><div class="kb-num" id="vdb-total">--</div><div class="kb-lbl">恶意哈希总数</div></div>
-        <div class="kb-stat-card"><div class="kb-num" id="vdb-bloom">--</div><div class="kb-lbl">Bloom 过滤器</div></div>
-        <div class="kb-stat-card"><div class="kb-num" id="vdb-sources">--</div><div class="kb-lbl">数据源</div></div>
-        <div class="kb-stat-card"><div class="kb-num" id="vdb-updated">--</div><div class="kb-lbl">上次更新</div></div>
+      <div class="panel-head">
+        <h2><svg class="ic"><use href="#ic-shield"/></svg> 病毒库管理</h2>
+        <p class="panel-sub">恶意软件哈希签名数据库 — 多源聚合 + Bloom 过滤器加速</p>
       </div>
 
-      <h3>数据源状态</h3>
-      <div id="virus-source-list" class="feed-list"></div>
-
-      <div class="kb-actions" style="margin-top:16px">
-        <button id="btn-refresh-vdb" class="cc-btn-outline">
-          <svg class="ic"><use href="#ic-scan"/></svg> 立即更新病毒库
-        </button>
-        <span id="vdb-refresh-msg" class="inline-msg hidden"></span>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-bar"/></svg> 病毒库规模</div>
+        <div class="kb-stats-row" id="virus-stats">
+          <div class="kb-stat-card"><div class="kb-num" id="vdb-total">--</div><div class="kb-lbl">恶意哈希总数</div></div>
+          <div class="kb-stat-card"><div class="kb-num" id="vdb-bloom">--</div><div class="kb-lbl">Bloom 过滤器</div></div>
+          <div class="kb-stat-card"><div class="kb-num" id="vdb-sources">--</div><div class="kb-lbl">数据源</div></div>
+          <div class="kb-stat-card"><div class="kb-num" id="vdb-updated">--</div><div class="kb-lbl">上次更新</div></div>
+        </div>
       </div>
 
-      <div class="kb-last-update" id="vdb-note" style="margin-top:12px">
-        病毒库使用 Bloom 过滤器加速查询——99% 的正常进程在 O(1) 内排除，仅命中候选才查完整 SET。
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-scan"/></svg> 数据源状态</div>
+        <div id="virus-source-list" class="feed-list"></div>
+        <div class="kb-actions" style="margin-top:16px;display:flex;align-items:center">
+          <button id="btn-refresh-vdb" class="cc-btn-outline">
+            <svg class="ic"><use href="#ic-scan"/></svg> 立即更新病毒库
+          </button>
+          <span id="vdb-refresh-msg" class="inline-msg hidden"></span>
+        </div>
+      </div>
+
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-cpu"/></svg> Bloom 过滤器</div>
+        <div class="group-desc">99% 的正常进程在 O(1) 内排除，仅命中候选才查完整 SET</div>
+        <div class="progress-bar"><div class="progress-fill" id="vdb-bloom-bar" style="width:0%"></div></div>
+        <div class="kb-last-update" id="vdb-note" style="margin-top:12px"></div>
       </div>
     </section>
 
     <!-- Tab 5: 关于 -->
     <section class="settings-panel" id="panel-about">
-      <h2>关于 OpenGuardian</h2>
-      <p class="panel-sub">AI 驱动的个人数字安全服务平台</p>
+      <div class="panel-head">
+        <h2><svg class="ic"><use href="#ic-book"/></svg> 关于 OpenGuardian</h2>
+        <p class="panel-sub">AI 驱动的个人数字安全服务平台</p>
+      </div>
 
-      <div class="about-grid" id="about-info">
-        <div class="about-item"><span class="about-key">版本</span><span class="about-val" id="about-version">--</span></div>
-        <div class="about-item"><span class="about-key">LLM 模型</span><span class="about-val" id="about-model">--</span></div>
-        <div class="about-item"><span class="about-key">LLM 提供商</span><span class="about-val" id="about-provider">--</span></div>
-        <div class="about-item"><span class="about-key">数据库</span><span class="about-val">SQLite (WAL)</span></div>
-        <div class="about-item"><span class="about-key">检测引擎</span><span class="about-val">8 模块 + Verifier + Reflector</span></div>
-        <div class="about-item"><span class="about-key">威胁情报</span><span class="about-val">5 Feed 源 · 每 6h 自动更新</span></div>
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-shield"/></svg> 系统信息</div>
+        <div class="about-grid" id="about-info">
+          <div class="about-item"><span class="about-key">版本</span><span class="about-val" id="about-version">--</span></div>
+          <div class="about-item"><span class="about-key">LLM 模型</span><span class="about-val" id="about-model">--</span></div>
+          <div class="about-item"><span class="about-key">LLM 提供商</span><span class="about-val" id="about-provider">--</span></div>
+          <div class="about-item"><span class="about-key">数据库</span><span class="about-val">SQLite (WAL)</span></div>
+          <div class="about-item"><span class="about-key">检测引擎</span><span class="about-val">8 模块 + Verifier</span></div>
+          <div class="about-item"><span class="about-key">威胁情报</span><span class="about-val">5 Feed · 6h 更新</span></div>
+        </div>
       </div>
 
       <div class="about-footer">
@@ -170,6 +231,6 @@
   </main>
 </div>
 
-<script src="/static/config.js" defer></script>
+<script src="/static/config.js?v=0.7.0" defer></script>
 </body>
 </html>

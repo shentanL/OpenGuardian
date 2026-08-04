@@ -8,13 +8,14 @@ from pydantic import BaseModel, Field
 
 
 class Intent(str, Enum):
-    """用户意图分类。"""
+    """用户意图。"""
 
     CONSULT = "consult"    # 安全咨询
     DETECT = "detect"      # 风险检测
     EXECUTE = "execute"    # 一键处置
     ASSET = "asset"        # 资产防护
     EDUCATE = "educate"    # 安全教育
+    CREDENTIAL = "credential"  # 凭据泄露检测
 
 
 class RiskLevel(str, Enum):

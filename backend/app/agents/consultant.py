@@ -38,11 +38,11 @@ logger = logging.getLogger(__name__)
 
 # 关键词降级规则（LLM 不可用时）。顺序敏感：高特异性意图在前。
 KEYWORD_RULES: list[tuple[Intent, list[str]]] = [
-    # 疑问句式优先：咨询类问题不能被检测词（木马/病毒/进程）抢走
     (Intent.CONSULT, ["什么是", "啥是", "什么叫", "解释一下", "介绍一下", "介绍下", "是什么", "有哪些", "怎么办", "如何防范", "怎么防范"]),
+    (Intent.CREDENTIAL, ["检查账号", "密码泄露", "邮箱泄露", "账号泄露", "查泄露", "泄露检测", "查一下账号", "检查密码泄露", "检查邮箱"]),
     (Intent.EXECUTE, ["结束", "关闭进程", "杀掉", "终止", "干掉", "退出进程"]),
     (Intent.DETECT, ["检测", "扫描", "查一下", "查杀", "体检", "风险", "木马", "病毒", "进程", "安全吗"]),
-    (Intent.ASSET, ["密码", "账号安全", "隐私", "泄露", "弱密码", "强密码"]),
+    (Intent.ASSET, ["密码", "账号安全", "隐私", "强密码"]),
     (Intent.EDUCATE, ["科普", "讲解", "讲讲", "钓鱼", "诈骗", "勒索", "科普一下", "教教我"]),
 ]
 
@@ -382,6 +382,51 @@ class ConsultantAgent(BaseAgent):
                     "quality": refl.quality_note,
                 },
             },
+        )
+
+    def _handle_credential(self, user_input: str) -> AgentResult:
+        """凭据泄露检测。"""
+        from .credential import extract_credentials, check_local_breach, generate_advice
+        import asyncio
+
+        creds = extract_credentials(user_input)
+        if not creds:
+            return AgentResult(
+                agent=self.name,
+                success=True,
+                message="未从输入中识别到邮箱、手机号或账号。请提供具体凭据，如「检查账号 138xxxx@qq.com」。",
+                data={"intent": Intent.CREDENTIAL.value},
+            )
+
+        parts = ["📋 凭据泄露检测结果：\n"]
+        for cred in creds:
+            result = check_local_breach(cred)
+            advice = generate_advice(cred, result)
+            status = "⚠️ 有泄露风险" if result["breached"] else "✅ 本地库未发现"
+            parts.append(f"**{cred['type']}**: `{cred['value']}` — {status}")
+            if result.get("evidence"):
+                parts.append(f"  证据: {result['evidence']}")
+            parts.append(f"  {advice}")
+            parts.append("")
+
+        message = "\n".join(parts)
+
+        # 如果识别到邮箱，尝试 HIBP k-匿名查询（后台异步，不阻塞）
+        for cred in creds:
+            if cred["type"] == "email":
+                try:
+                    result = asyncio.run(check_hibp(cred["value"]))
+                    if result and result["breached"]:
+                        message += f"\n🔍 HIBP 全球泄露库确认: {result['evidence']}"
+                except Exception:
+                    pass
+                break
+
+        return AgentResult(
+            agent=self.name,
+            success=True,
+            message=message,
+            data={"intent": Intent.CREDENTIAL.value, "credentials_found": len(creds)},
         )
 
     def _handle_execute(self, user_input: str) -> AgentResult:

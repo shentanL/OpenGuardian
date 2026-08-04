@@ -45,21 +45,30 @@ jobs:
       - name: Compile Installer (ISCC)
         shell: powershell
         run: |
+          # 诊断环境
+          Write-Host "== CWD =="
+          Get-Location
+          Write-Host "== dist 内容 =="
+          Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name
+          Get-ChildItem dist/OpenGuardian -ErrorAction SilentlyContinue | Select-Object -First 5 Name
+          Write-Host "== ico =="
+          Test-Path OpenGuardian.ico
+
           $iscc = (Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
           if (-not $iscc) {
             Write-Host "::error::ISCC not found in C:\Program Files (x86)"
-            Get-ChildItem "C:\Program Files (x86)" -ErrorAction SilentlyContinue | Select-Object Name
             exit 1
           }
           Write-Host "Using ISCC: $iscc"
-          & $iscc setup.iss 2>&1 | Tee-Object -FilePath iscc.log
+
+          # 直接运行，不用管道（避免 $LASTEXITCODE 问题），输出全量到日志
+          & $iscc setup.iss
           $code = $LASTEXITCODE
-          Write-Host "ISCC exit code: $code"
           if ($code -ne 0) {
-            Write-Host "=== ISCC log tail ==="
-            Get-Content iscc.log -Tail 40
+            Write-Host "::error::ISCC failed with exit code $code"
             exit $code
           }
+          Write-Host "::notice::ISCC 编译成功"
           Get-ChildItem OpenGuardian-*-Setup.exe | Select-Object Name, Length
 
       - name: Upload ISCC log (always)

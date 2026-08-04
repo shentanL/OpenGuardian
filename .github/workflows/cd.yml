@@ -34,8 +34,9 @@ jobs:
       - name: Package dist zip
         shell: powershell
         run: |
-          Compress-Archive -Path dist/OpenGuardian/* -DestinationPath OpenGuardian.zip
+          Compress-Archive -Path dist/OpenGuardian -DestinationPath OpenGuardian.zip
           Write-Host "打包完成: $((Get-Item OpenGuardian.zip).Length / 1MB) MB"
+          Get-ChildItem OpenGuardian.zip | Select-Object Name, Length
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

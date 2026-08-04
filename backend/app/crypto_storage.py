@@ -174,6 +174,7 @@ def migrate_to_encrypted(config_path: Path) -> bool:
     返回 True 表示已迁移（或无需迁移）。
     """
     import json
+    config_path = Path(config_path) if not isinstance(config_path, Path) else config_path
     if not config_path.exists():
         return False
 

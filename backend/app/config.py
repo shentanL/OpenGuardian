@@ -27,7 +27,7 @@ class Settings:
     DEEPSEEK_BASE_URL: str = os.getenv(
         "DEEPSEEK_BASE_URL", "https://api.deepseek.com"
     )
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-v4-pro")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "deepseek-v4-flash")
     LLM_TIMEOUT: float = float(os.getenv("LLM_TIMEOUT", "30"))
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "2048"))
 

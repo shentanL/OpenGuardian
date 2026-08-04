@@ -1,43 +1,43 @@
 {
   "sources": {
     "URLhaus": {
-      "total_raw": 907,
-      "added": 80,
-      "updated": "2026-08-04 13:25:39",
+      "total_raw": 828,
+      "added": 1,
+      "updated": "2026-08-04 13:42:25",
       "ok": true
     },
     "FireHOL_level1": {
       "total_raw": 4579,
       "added": 0,
-      "updated": "2026-08-04 13:25:40",
+      "updated": "2026-08-04 13:42:27",
       "ok": true
     },
     "FireHOL_level3": {
       "total_raw": 13173,
       "added": 0,
-      "updated": "2026-08-04 13:25:41",
+      "updated": "2026-08-04 13:42:28",
       "ok": true
     },
     "EmergingThreats_compromised": {
       "total_raw": 559,
       "added": 0,
-      "updated": "2026-08-04 13:25:42",
+      "updated": "2026-08-04 13:42:29",
       "ok": true
     },
     "AlienVault_OTX": {
       "total_raw": 609,
       "added": 0,
-      "updated": "2026-08-04 13:25:48",
+      "updated": "2026-08-04 13:42:35",
       "ok": true
     },
     "MalwareBazaar": {
       "total": 5795,
-      "updated": "2026-08-04 13:26:01",
+      "updated": "2026-08-04 13:42:42",
       "ok": true
     }
   },
-  "last_update": "2026-08-04 13:25:38",
+  "last_update": "2026-08-04 13:42:19",
   "ok": true,
-  "domain_count": 3805,
+  "domain_count": 3887,
   "ip_count": 39438
 }

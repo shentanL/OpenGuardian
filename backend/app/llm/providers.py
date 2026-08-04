@@ -12,7 +12,7 @@ PROVIDERS: dict[str, dict] = {
     "deepseek": {
         "name": "DeepSeek (深度求索)",
         "base_url": "https://api.deepseek.com",
-        "models": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
+        "models": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-v3.2", "deepseek-r1", "deepseek-chat", "deepseek-reasoner"],
         "default_model": "deepseek-v4-pro",
         "format": "openai",
         "auth": "bearer",
@@ -21,7 +21,7 @@ PROVIDERS: dict[str, dict] = {
     "kimi": {
         "name": "Kimi (月之暗面)",
         "base_url": "https://api.moonshot.cn/v1",
-        "models": ["moonshot-v1-auto", "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+        "models": ["kimi-k3", "moonshot-v1-auto", "moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
         "default_model": "moonshot-v1-auto",
         "format": "openai",
         "auth": "bearer",
@@ -30,7 +30,7 @@ PROVIDERS: dict[str, dict] = {
     "zhipu": {
         "name": "智谱 GLM",
         "base_url": "https://open.bigmodel.cn/api/paas/v4",
-        "models": ["glm-4-flash", "glm-4-air", "glm-4-plus", "glm-4", "glm-4v-flash"],
+        "models": ["glm-5.2", "glm-5.1", "glm-4.7", "glm-4-flash", "glm-4-air", "glm-4-plus", "glm-4v-flash"],
         "default_model": "glm-4-flash",
         "format": "openai",
         "auth": "bearer",
@@ -39,7 +39,7 @@ PROVIDERS: dict[str, dict] = {
     "qwen": {
         "name": "通义千问 (阿里云)",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "models": ["qwen-turbo", "qwen-plus", "qwen-max", "qwen3-235b-a22b", "qwen-coder-plus"],
+        "models": ["qwen3.7", "qwen3-235b-a22b", "qwen-max", "qwen-plus", "qwen-turbo", "qwen-coder-plus"],
         "default_model": "qwen-turbo",
         "format": "openai",
         "auth": "bearer",
@@ -57,7 +57,7 @@ PROVIDERS: dict[str, dict] = {
     "minimax": {
         "name": "MiniMax (海螺 AI)",
         "base_url": "https://api.minimax.chat/v1",
-        "models": ["abab6.5s-chat", "abab6.5t-chat", "abab7-chat-preview"],
+        "models": ["minimax-m3", "minimax-h3", "abab7-chat-preview", "abab6.5s-chat"],
         "default_model": "abab6.5s-chat",
         "format": "openai",
         "auth": "bearer",
@@ -84,7 +84,7 @@ PROVIDERS: dict[str, dict] = {
     "hunyuan": {
         "name": "腾讯混元",
         "base_url": "https://api.hunyuan.cloud.tencent.com/v1",
-        "models": ["hunyuan-turbo", "hunyuan-pro", "hunyuan-lite", "hunyuan-t1"],
+        "models": ["hunyuan-hy3", "hunyuan-turbo", "hunyuan-pro", "hunyuan-lite", "hunyuan-t1"],
         "default_model": "hunyuan-turbo",
         "format": "openai",
         "auth": "bearer",
@@ -98,6 +98,15 @@ PROVIDERS: dict[str, dict] = {
         "format": "openai",
         "auth": "bearer",
         "description": "阶跃星辰 Step 系列，step-2 为最新旗舰",
+    },
+    "baidu": {
+        "name": "百度文心 (千帆)",
+        "base_url": "https://qianfan.baidubce.com/v2",
+        "models": ["ernie-4.5-turbo-128k", "ernie-4.5-8k", "ernie-3.5-8k", "ernie-speed-8k"],
+        "default_model": "ernie-4.5-turbo-128k",
+        "format": "openai",
+        "auth": "bearer",
+        "description": "百度千帆平台。文心 ERNIE 系列，OpenAI 兼容端点（已验证 401=端点正确），需千帆控制台获取 Access Key",
     },
     "spark": {
         "name": "讯飞星火",
@@ -249,6 +258,15 @@ PROVIDERS: dict[str, dict] = {
         "format": "openai",
         "auth": "bearer",
         "description": "Replicate。一键部署开源模型，按秒计费，适合测试实验",
+    },
+    "ai21": {
+        "name": "AI21 Labs (Jamba)",
+        "base_url": "https://api.ai21.com/studio/v1",
+        "models": ["jamba-1.6-large", "jamba-1.6-mini", "jamba-1.5-large", "jamba-1.5-mini"],
+        "default_model": "jamba-1.6-large",
+        "format": "openai",
+        "auth": "bearer",
+        "description": "AI21 Jamba 系列。Hybrid SSM-Transformer 架构，长上下文高效（已验证 401=端点正确）",
     },
 
     # ═══════════════════════════════════════════

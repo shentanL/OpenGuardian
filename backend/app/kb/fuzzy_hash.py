@@ -218,10 +218,10 @@ _KNOWN_FUZZY: list[str] | None = None
 
 def load_fuzzy_database() -> list[str]:
     global _KNOWN_FUZZY
-    if _known_fuzzy is not None:
-        return _known_fuzzy
+    if _KNOWN_FUZZY is not None:
+        return _KNOWN_FUZZY
 
-    _known_fuzzy = []
+    _KNOWN_FUZZY = []
     try:
         import sys as _sys
         from pathlib import Path as _Path
@@ -232,8 +232,8 @@ def load_fuzzy_database() -> list[str]:
         fuzzy_file = kb_dir / ".fuzzy_hashes.txt"
         if fuzzy_file.exists():
             with open(fuzzy_file, encoding="utf-8") as f:
-                _known_fuzzy = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
-        logger.info("模糊哈希库加载: %d 条", len(_known_fuzzy))
+                _KNOWN_FUZZY = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
+        logger.info("模糊哈希库加载: %d 条", len(_KNOWN_FUZZY))
     except Exception:
         pass
-    return _known_fuzzy
+    return _KNOWN_FUZZY

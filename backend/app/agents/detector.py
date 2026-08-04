@@ -291,7 +291,7 @@ class DetectorAgent(BaseAgent):
                                 risks.append(RiskItem(
                                     item_type="malware_hash",
                                     name=name,
-                                    detail=f"程序文件 SHA256 命中恶意软件病毒库（MalwareBazaar 真实样本）",
+                                    detail="程序文件 SHA256 命中恶意软件病毒库（MalwareBazaar 真实样本）",
                                     level=RiskLevel.CRITICAL,
                                     suggestion="该程序的哈希与已知恶意软件完全一致，立即结束进程并全盘查杀。",
                                     pid=pid,

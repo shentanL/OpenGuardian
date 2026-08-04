@@ -239,7 +239,8 @@ class ConsultantAgent(BaseAgent):
         # ── 2.5 行为异常检测 ──
         try:
             from .behavioral import get_behavioral_engine
-            import psutil as _ps, time as _t
+            import psutil as _ps
+            import time as _t
             bengine = get_behavioral_engine()
             ts = __import__('time').strftime('%Y-%m-%dT%H:%M:%S')
             for proc in _ps.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent',
@@ -423,7 +424,7 @@ class ConsultantAgent(BaseAgent):
 
     def _handle_credential(self, user_input: str) -> AgentResult:
         """凭据泄露检测。"""
-        from .credential import extract_credentials, check_local_breach, generate_advice
+        from .credential import extract_credentials, check_local_breach, generate_advice, check_hibp
         import asyncio
 
         creds = extract_credentials(user_input)

@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -22,70 +22,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt -r backend/requirements-build.txt
 
-      # 打包需要 backend/.env（真实 Key 存 GitHub Secrets，不进仓库）
       - name: Create .env from secrets
         run: |
           echo "DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}" > backend/.env
-          if [ ! -s backend/.env ] || grep -q "DEEPSEEK_API_KEY=$" backend/.env; then
-            echo "::warning::DEEPSEEK_API_KEY secret 未配置，使用占位符"
-            echo "DEEPSEEK_API_KEY=ci-placeholder-key" > backend/.env
-          fi
         shell: bash
 
       - name: Build with PyInstaller
         run: pyinstaller OpenGuardian.spec --clean --noconfirm
         shell: bash
 
-      - name: Install Inno Setup (winget)
-        shell: powershell
+      - name: Package dist folder
+        shell: bash
         run: |
-          winget install --accept-package-agreements --accept-source-agreements --silent JRSoftware.InnoSetup
-          Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" | Select-Object -ExpandProperty FullName
-
-      - name: Compile Installer (ISCC)
-        shell: powershell
-        run: |
-          # 诊断环境
-          Write-Host "== CWD =="
-          Get-Location
-          Write-Host "== dist 内容 =="
-          Get-ChildItem dist -ErrorAction SilentlyContinue | Select-Object Name
-          Get-ChildItem dist/OpenGuardian -ErrorAction SilentlyContinue | Select-Object -First 5 Name
-          Write-Host "== ico =="
-          Test-Path OpenGuardian.ico
-
-          $iscc = (Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          if (-not $iscc) {
-            Write-Host "::error::ISCC not found in C:\Program Files (x86)"
-            exit 1
-          }
-          Write-Host "Using ISCC: $iscc"
-
-          # 输出重定向到文件，同时把错误打进 annotations
-          & $iscc setup.iss > $env:TEMP\iscc_out.txt 2>&1
-          $code = $LASTEXITCODE
-          Write-Host "ISCC exit code: $code"
-          Get-Content $env:TEMP\iscc_out.txt -Tail 25 | ForEach-Object {
-            Write-Host "::error::ISCC| $($_)"
-          }
-          if ($code -ne 0) {
-            exit $code
-          }
-          Write-Host "::notice::ISCC 编译成功"
-          Get-ChildItem OpenGuardian-*-Setup.exe | Select-Object Name, Length
-
-      - name: Upload ISCC log (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: iscc-log
-          path: iscc.log
-          if-no-files-found: ignore
+          cd dist
+          tar -czf ../OpenGuardian-bundle.tar.gz OpenGuardian/
+          cd ..
+          echo "打包完成: $(du -h OpenGuardian-bundle.tar.gz | cut -f1)"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: OpenGuardian-*-Setup.exe
+          files: OpenGuardian-bundle.tar.gz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

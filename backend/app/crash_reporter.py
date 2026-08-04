@@ -1,4 +1,4 @@
-"""崩溃上报模块 —— 本地日志 + 可选 Sentry 集成。
+r"""崩溃上报模块 —— 本地日志 + 可选 Sentry 集成。
 
 设计：
 - 始终写本地崩溃日志（%LOCALAPPDATA%\OpenGuardian\crashes\）

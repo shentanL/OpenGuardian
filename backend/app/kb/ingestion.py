@@ -95,11 +95,16 @@ def is_private_ip(ip: str) -> bool:
     parts = ip.split("/")[0].split(".")
     try:
         first, second = int(parts[0]), int(parts[1])
-        if first == 10: return True
-        if first == 172 and 16 <= second <= 31: return True
-        if first == 192 and second == 168: return True
-        if first == 127: return True
-        if first >= 224: return True  # 组播/保留
+        if first == 10:
+            return True
+        if first == 172 and 16 <= second <= 31:
+            return True
+        if first == 192 and second == 168:
+            return True
+        if first == 127:
+            return True
+        if first >= 224:
+            return True  # 组播/保留
     except (ValueError, IndexError):
         pass
     return False

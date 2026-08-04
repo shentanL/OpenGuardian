@@ -1,4 +1,4 @@
-"""API Key 加密存储（Windows 机器绑定加密，纯标准库）。
+r"""API Key 加密存储（Windows 机器绑定加密，纯标准库）。
 
 加密方案：
 - 密钥派生：MachineGuid (HKLM\SOFTWARE\Microsoft\Cryptography) + 固定盐 → PBKDF2-SHA256

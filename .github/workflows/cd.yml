@@ -37,17 +37,27 @@ jobs:
 
       - name: Install Inno Setup
         shell: powershell
-        run: choco install innosetup -y --no-progress
+        run: |
+          $installer = "$env:TEMP\innosetup.exe"
+          Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $installer -UseBasicParsing
+          Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait
+          Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" | Select-Object -ExpandProperty FullName
 
       - name: Compile Installer (ISCC)
         shell: powershell
         run: |
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) {
-            $iscc = (Get-ChildItem "C:\Program Files*\Inno Setup*\ISCC.exe" -Recurse | Select-Object -First 1).FullName
+            $iscc = (Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" | Select-Object -First 1).FullName
           }
           Write-Host "Using ISCC: $iscc"
-          & $iscc setup.iss
+          & $iscc setup.iss 2>&1 | Tee-Object -Variable out
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "=== ISCC 输出 ==="
+            $out | Select-Object -Last 40
+            exit $LASTEXITCODE
+          }
+          Get-ChildItem OpenGuardian-*-Setup.exe | Select-Object Name, Length
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

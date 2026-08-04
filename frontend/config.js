@@ -152,9 +152,13 @@
     const provider = getSelectedProviderKey() || "deepseek";
     if (!provider) { showMsg("请选择 AI 提供商", false); return; }
     const testBtn = document.getElementById("btn-test-llm");
-    testBtn.disabled = true;
-    testBtn.classList.add("testing");
-    testBtn.querySelector("span") && (testBtn.querySelector("span").textContent = "测试中…");
+    const dot = document.getElementById("test-dot");
+    const setTestState = (state) => {
+      dot.className = "test-dot " + state;
+      if (state === "testing") { testBtn.classList.add("testing"); testBtn.disabled = true; }
+      else { testBtn.classList.remove("testing"); testBtn.disabled = false; }
+    };
+    setTestState("testing");
     showMsg("正在保存配置并测试连接…", true);
     try {
       // 1) 保存
@@ -171,14 +175,17 @@
       // 2) 实测
       const r = await fetch("/api/llm/test", { method: "POST" });
       const d = await r.json();
-      if (d.ok) showMsg("✅ 连接成功！模型返回：" + (d.reply || "正常响应"), true);
-      else showMsg("❌ 连接失败：" + (d.error || "未知错误") + "（检查 Key/网络/模型名）", false);
+      if (d.ok) {
+        setTestState("success");
+        showMsg("✅ 连接成功！模型返回：" + (d.reply || "正常响应"), true);
+      } else {
+        setTestState("fail");
+        showMsg("❌ 连接失败：" + (d.error || "未知错误") + "（检查 Key/网络/模型名）", false);
+      }
     } catch (err) {
+      setTestState("fail");
       showMsg("❌ 测试失败：" + err.message, false);
     }
-    testBtn.disabled = false;
-    testBtn.classList.remove("testing");
-    testBtn.querySelector("span") && (testBtn.querySelector("span").textContent = "测试连接");
   });
 
   /* ── Tab 2: 威胁情报 ── */

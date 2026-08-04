@@ -107,16 +107,19 @@
         </div>
       </div>
 
-      <div class="group-card">
-        <div class="form-group" style="margin-bottom:0">
+      <!-- Sticky 底部操作栏（GitHub settings 风格） -->
+      <div class="settings-actions">
+        <div id="provider-msg" class="form-msg hidden"></div>
+        <div class="sa-right">
+          <button id="btn-test-llm" class="cc-btn-ghost">
+            <span class="test-dot" id="test-dot"></span>
+            <svg class="ic"><use href="#ic-scan"/></svg>
+            <span class="btn-label">测试连接</span>
+          </button>
           <button id="btn-save-provider" class="cc-btn">
             <svg class="ic"><use href="#ic-send"/></svg> 保存 AI 设置
           </button>
-          <button id="btn-test-llm" class="cc-btn-test">
-            <svg class="ic"><use href="#ic-scan"/></svg> 测试连接
-          </button>
         </div>
-        <div id="provider-msg" class="form-msg hidden"></div>
       </div>
     </section>
 

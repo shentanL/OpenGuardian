@@ -174,6 +174,30 @@ async def test_llm() -> dict:
         return {"ok": False, "error": str(exc)[:200]}
 
 
+@app.get("/api/system")
+def system_info() -> dict:
+    """本机实时状态（设置页关于/本机状态用）。"""
+    import psutil
+    import platform
+    try:
+        vm = psutil.virtual_memory()
+        disk = psutil.disk_usage("C:")
+        uptime = time.time() - _start_time if _start_time else 0
+        return {
+            "os": f"{platform.system()} {platform.release()}",
+            "cpu_pct": psutil.cpu_percent(interval=0.3),
+            "mem_pct": vm.percent,
+            "mem_used_gb": round(vm.used / 1024**3, 1),
+            "mem_total_gb": round(vm.total / 1024**3, 1),
+            "disk_free_gb": round(disk.free / 1024**3, 1),
+            "disk_total_gb": round(disk.total / 1024**3, 1),
+            "process_count": len(psutil.pids()),
+            "uptime_s": int(uptime),
+        }
+    except Exception:  # noqa: BLE001
+        return {"error": "无法获取系统信息"}
+
+
 @app.get("/api/agents")
 def list_agents() -> dict:
     return {"agents": bus.list_agents() + [{"name": "consult", "description": "交互中枢"}]}

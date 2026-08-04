@@ -25,6 +25,9 @@
     </button>
 
     <div class="sn-group">数据防护</div>
+    <button class="sn-tab" data-tab="baseline">
+      <svg class="ic"><use href="#ic-shield"/></svg> 安全基线
+    </button>
     <button class="sn-tab" data-tab="threats">
       <svg class="ic"><use href="#ic-radar"/></svg> 威胁情报
     </button>
@@ -117,7 +120,76 @@
       </div>
     </section>
 
-    <!-- Tab 2: 威胁情报 -->
+    <!-- Tab 2: 安全基线 -->
+    <section class="settings-panel" id="panel-baseline">
+      <div class="panel-head">
+        <h2><svg class="ic"><use href="#ic-shield"/></svg> 安全基线</h2>
+        <p class="panel-sub">OpenGuardian 检测能力矩阵 — 8 大模块 · 30+ 检测点 · 实时防护</p>
+      </div>
+
+      <div class="baseline-grid" id="baseline-grid">
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-scan"/></svg></span><span class="bl-name">恶意进程</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">393 特征 + 5797 SHA256 哈希双引擎匹配，可疑进程秒级识别</div>
+          <div class="bl-meta">特征库 · 哈希比对 · Verifier 验证</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-net"/></svg></span><span class="bl-name">网络连接</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">39440 恶意 IP + 3889 恶意域名实时比对，阻断 C2 通信</div>
+          <div class="bl-meta">FireHOL · ET · AlienVault · URLhaus</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-gauge"/></svg></span><span class="bl-name">资源健康</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">CPU/内存/磁盘实时采样，5s 周期，异常增长预警</div>
+          <div class="bl-meta">psutil · 趋势分析</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-alert"/></svg></span><span class="bl-name">漏洞审计</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">补丁/SMBv1/防火墙/Guest/UAC/共享/HOSTS/计划任务 8 类检查</div>
+          <div class="bl-meta">CIS Benchmark 对标</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-shield"/></svg></span><span class="bl-name">Defender 状态</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">实时保护/引擎/最后扫描时间审计，免疫状态一目了然</div>
+          <div class="bl-meta">Get-MpComputerStatus</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-clock"/></svg></span><span class="bl-name">系统更新</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">补丁数量审计，少于 CIS 基线阈值即告警</div>
+          <div class="bl-meta">Get-HotFix 审计</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-cpu"/></svg></span><span class="bl-name">风险服务</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">RemoteRegistry/Telnet/SNMP 等高危服务排查</div>
+          <div class="bl-meta">sc query · 6 类服务</div>
+        </div>
+        <div class="bl-card">
+          <div class="bl-head"><span class="bl-ic"><svg class="ic"><use href="#ic-lock"/></svg></span><span class="bl-name">账户安全</span><span class="badge ok">在线</span></div>
+          <div class="bl-desc">密码策略/锁定阈值/自动登录/Guest 审计</div>
+          <div class="bl-meta">net accounts · zxcvbn</div>
+        </div>
+      </div>
+
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-cpu"/></svg> 多智能体流水线</div>
+        <div class="group-desc">检测 → 验证 → 反思 → 分级 → 处置 → 教育 全链路</div>
+        <div class="pipeline">
+          <div class="pl-stage"><span class="pl-num">01</span><span class="pl-name">Detector</span><span class="pl-sub">并行扫描</span></div>
+          <div class="pl-arrow">→</div>
+          <div class="pl-stage"><span class="pl-num">02</span><span class="pl-name">Asset</span><span class="pl-sub">资产审计</span></div>
+          <div class="pl-arrow">→</div>
+          <div class="pl-stage"><span class="pl-num">03</span><span class="pl-name">Verifier</span><span class="pl-sub">对抗验证</span></div>
+          <div class="pl-arrow">→</div>
+          <div class="pl-stage"><span class="pl-num">04</span><span class="pl-name">Reflector</span><span class="pl-sub">反思覆盖</span></div>
+          <div class="pl-arrow">→</div>
+          <div class="pl-stage"><span class="pl-num">05</span><span class="pl-name">Triage</span><span class="pl-sub">分级处置</span></div>
+          <div class="pl-arrow">→</div>
+          <div class="pl-stage"><span class="pl-num">06</span><span class="pl-name">Educator</span><span class="pl-sub">安全教育</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: 威胁情报 -->
     <section class="settings-panel" id="panel-threats">
       <div class="panel-head">
         <h2><svg class="ic"><use href="#ic-radar"/></svg> 威胁情报管理</h2>
@@ -148,7 +220,21 @@
 
       <div class="group-card">
         <div class="group-title"><svg class="ic"><use href="#ic-status"/></svg> Feed 源状态</div>
-        <div id="feed-list" class="feed-list"></div>
+        <div class="group-desc">各威胁情报源实时状态与数据规模</div>
+        <table class="data-table" id="feed-table">
+          <thead>
+            <tr>
+              <th>情报源</th>
+              <th>分类</th>
+              <th>状态</th>
+              <th>总量</th>
+              <th>新增</th>
+              <th>更新时间</th>
+              <th>更新周期</th>
+            </tr>
+          </thead>
+          <tbody id="feed-list"></tbody>
+        </table>
         <div class="kb-last-update" id="kb-last">上次更新：--</div>
       </div>
     </section>
@@ -172,7 +258,7 @@
       </div>
 
       <div class="group-card">
-        <div class="group-title"><svg class="ic"><use href="#ic-list"/></svg> 白名单列表 <span class="wl-count" id="wl-count">0 项</span></div>
+        <div class="group-title"><svg class="ic"><use href="#ic-book"/></svg> 白名单列表 <span class="wl-count" id="wl-count">0 项</span></div>
         <div class="group-desc">已加入白名单的进程将跳过检测</div>
         <div class="table-toolbar">
           <input id="wl-search" type="text" placeholder="搜索进程名…" class="cc-input-text wl-search-input" autocomplete="off">
@@ -209,7 +295,19 @@
 
       <div class="group-card">
         <div class="group-title"><svg class="ic"><use href="#ic-scan"/></svg> 数据源状态</div>
-        <div id="virus-source-list" class="feed-list"></div>
+        <div class="group-desc">恶意哈希数据源实时状态</div>
+        <table class="data-table" id="virus-source-table">
+          <thead>
+            <tr>
+              <th>数据源</th>
+              <th>类型</th>
+              <th>状态</th>
+              <th>哈希数量</th>
+              <th>更新时间</th>
+            </tr>
+          </thead>
+          <tbody id="virus-source-list"></tbody>
+        </table>
         <div class="kb-actions" style="margin-top:16px;display:flex;align-items:center">
           <button id="btn-refresh-vdb" class="cc-btn-outline">
             <svg class="ic"><use href="#ic-scan"/></svg> 立即更新病毒库
@@ -231,6 +329,18 @@
       <div class="panel-head">
         <h2><svg class="ic"><use href="#ic-book"/></svg> 关于 OpenGuardian</h2>
         <p class="panel-sub">AI 驱动的个人数字安全服务平台</p>
+      </div>
+
+      <div class="group-card">
+        <div class="group-title"><svg class="ic"><use href="#ic-cpu"/></svg> 本机状态</div>
+        <div class="about-grid" id="sys-info">
+          <div class="about-item"><span class="about-key">操作系统</span><span class="about-val" id="sys-os">--</span></div>
+          <div class="about-item"><span class="about-key">CPU 使用</span><span class="about-val" id="sys-cpu">--</span></div>
+          <div class="about-item"><span class="about-key">内存占用</span><span class="about-val" id="sys-mem">--</span></div>
+          <div class="about-item"><span class="about-key">磁盘剩余</span><span class="about-val" id="sys-disk">--</span></div>
+          <div class="about-item"><span class="about-key">运行进程</span><span class="about-val" id="sys-proc">--</span></div>
+          <div class="about-item"><span class="about-key">运行时长</span><span class="about-val" id="sys-uptime">--</span></div>
+        </div>
       </div>
 
       <div class="group-card">

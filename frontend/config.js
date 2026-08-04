@@ -196,18 +196,28 @@
       const feeds = d.feeds || [];
       const sources = d.sources || {};
 
-      feedList.innerHTML = feeds.map((f) => {
+      const feedRows = feeds.map((f) => {
         const src = sources[f.name] || {};
         const ok = src.ok !== false;
         const badgeCls = ok ? "ok" : "err";
         const badgeTxt = ok ? "在线" : "异常";
-        return '<div class="feed-item">' +
-          '<span class="feed-name">' + escapeHtml(f.name) + '</span>' +
-          '<span class="feed-type">' + escapeHtml(f.type || f.ioc_type || "") + '</span>' +
-          '<span class="badge ' + badgeCls + '">' + badgeTxt + '</span>' +
-          '<span class="feed-count">' + (src.total ? src.total.toLocaleString() : "--") + '</span>' +
-          '</div>';
+        const total = src.total_raw || src.total || 0;
+        const added = src.added || 0;
+        const updated = (src.updated || "--").slice(5, 16);
+        const catMap = { malware: "恶意软件", scanner: "扫描器", c2: "C2 僵尸网络", compromised: "失陷主机", phish: "钓鱼" };
+        return '<tr>' +
+          '<td class="td-mono">' + escapeHtml(f.name) + '</td>' +
+          '<td><span class="feed-type-tag">' + escapeHtml(catMap[f.category] || f.category || "--") + '</span></td>' +
+          '<td><span class="badge ' + badgeCls + '">' + badgeTxt + '</span></td>' +
+          '<td class="td-mono td-num">' + (total ? total.toLocaleString() : "--") + '</td>' +
+          '<td class="td-num">' + (added ? "+" + added.toLocaleString() : "--") + '</td>' +
+          '<td class="td-mono td-dim">' + updated + '</td>' +
+          '<td class="td-dim">每 ' + (f.interval_h || 6) + 'h</td>' +
+          '</tr>';
       }).join("");
+
+      feedList.innerHTML = feedRows ||
+        '<tr><td colspan="7" class="table-empty">暂无 Feed 数据</td></tr>';
     } catch (err) {
       console.warn("KB status load failed:", err);
     }
@@ -341,24 +351,26 @@
 
       var sourceList = document.getElementById("virus-source-list");
       var vdbSources = sources.eset || sources.malwarebazaar ? [
-        { name: "ESET malware-ioc", ok: (sources.eset || {}).ok !== false, total: (sources.eset || {}).total || "--", desc: "ESET 真实 APT/恶意家族 SHA256 签名库" },
-        { name: "MalwareBazaar", ok: (sources.malwarebazaar || {}).ok !== false, total: (sources.malwarebazaar || {}).total || "--", desc: "abuse.ch 每日更新的恶意软件哈希 CSV" },
+        { name: "ESET malware-ioc", ok: (sources.eset || {}).ok !== false, total: (sources.eset || {}).total || "--", updated: (sources.eset || {}).updated || "--", desc: "ESET 真实 APT/恶意家族 SHA256 签名库" },
+        { name: "MalwareBazaar", ok: (sources.malwarebazaar || {}).ok !== false, total: (sources.malwarebazaar || {}).total || "--", updated: (sources.malwarebazaar || {}).updated || "--", desc: "abuse.ch 每日更新的恶意软件哈希 CSV" },
       ] : [];
       if (vdbSources.length === 0 && hcount > 0) {
-        vdbSources.push({ name: "本地缓存", ok: true, total: hcount, desc: "已缓存的恶意哈希数据库" });
+        vdbSources.push({ name: "本地缓存", ok: true, total: hcount, updated: "--", desc: "已缓存的恶意哈希数据库" });
       }
       sourceList.innerHTML = vdbSources.length
         ? vdbSources.map(function (s) {
             var bCls = s.ok ? "ok" : "err";
             var bTxt = s.ok ? "在线" : "异常";
-            return '<div class="feed-item">' +
-              '<span class="feed-name">' + escapeHtml(s.name) + '</span>' +
-              '<span class="feed-type">SHA256</span>' +
-              '<span class="badge ' + bCls + '">' + bTxt + '</span>' +
-              '<span class="feed-count">' + (typeof s.total === "number" ? s.total.toLocaleString() : s.total) + '</span>' +
-              '</div>';
+            var u = (s.updated || "--").slice(5, 16);
+            return '<tr>' +
+              '<td class="td-mono">' + escapeHtml(s.name) + '</td>' +
+              '<td><span class="feed-type-tag">SHA256</span></td>' +
+              '<td><span class="badge ' + bCls + '">' + bTxt + '</span></td>' +
+              '<td class="td-mono td-num">' + (typeof s.total === "number" ? s.total.toLocaleString() : s.total) + '</td>' +
+              '<td class="td-mono td-dim">' + u + '</td>' +
+              '</tr>';
           }).join("")
-        : '<div class="feed-item"><span class="feed-info">暂无病毒库数据，点击下方按钮开始更新</span></div>';
+        : '<tr><td colspan="5" class="table-empty">暂无病毒库数据，点击下方按钮开始更新</td></tr>';
     } catch (err) { console.warn("VDB load failed:", err); }
   }
 
@@ -380,6 +392,35 @@
     btn.disabled = false;
     btn.innerHTML = '<svg class="ic"><use href="#ic-scan"/></svg> 立即更新病毒库';
   });
+
+  /* ── Tab 5: 关于 ── */
+  async function loadAbout() {
+    try {
+      const [cfg, sys] = await Promise.all([
+        fetch("/api/config").then((r) => r.json()),
+        fetch("/api/system").then((r) => r.json()),
+      ]);
+      const setT = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v;
+      };
+      setT("about-version", cfg.version || "0.7.0");
+      setT("about-model", cfg.model || "未配置");
+      setT("about-provider", cfg.provider || "未配置");
+      // 本机状态
+      if (sys && !sys.error) {
+        setT("sys-os", sys.os || "--");
+        setT("sys-cpu", sys.cpu_pct !== undefined ? sys.cpu_pct.toFixed(1) + "%" : "--");
+        setT("sys-mem", sys.mem_used_gb !== undefined ? sys.mem_used_gb + " / " + sys.mem_total_gb + " GB (" + sys.mem_pct + "%)" : "--");
+        setT("sys-disk", sys.disk_free_gb !== undefined ? sys.disk_free_gb + " / " + sys.disk_total_gb + " GB" : "--");
+        setT("sys-proc", sys.process_count !== undefined ? sys.process_count + " 个" : "--");
+        const u = sys.uptime_s || 0;
+        setT("sys-uptime", u > 3600 ? (u / 3600).toFixed(1) + " 小时" : Math.floor(u / 60) + " 分钟");
+      }
+    } catch (err) {
+      console.warn("About load failed:", err);
+    }
+  }
 
   /* ── 顶部状态条 ── */
   async function loadStatusBar() {

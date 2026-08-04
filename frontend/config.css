@@ -426,6 +426,70 @@ body {
 
 .feed-count { color: var(--gray-400); font-family: var(--mono); font-size: 11px; }
 
+/* ═══ 安全基线 ═══ */
+.baseline-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  margin-bottom: 20px;
+}
+
+.bl-card {
+  background: var(--bg-card);
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.bl-card::before {
+  content: ""; position: absolute; top: 0; left: 0;
+  width: 2px; height: 100%;
+  background: var(--green);
+  opacity: 0; transition: opacity 0.2s;
+}
+.bl-card:hover { border-color: rgba(118,185,0,0.4); }
+.bl-card:hover::before { opacity: 1; }
+
+.bl-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.bl-ic .ic { width: 16px; height: 16px; color: var(--green); }
+.bl-name { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--gray-100); flex: 1; }
+.bl-desc { color: var(--gray-400); font-size: 11px; line-height: 1.6; margin-bottom: 8px; }
+.bl-meta { color: var(--gray-600); font-size: 10px; font-family: var(--mono); letter-spacing: 0.5px; }
+
+/* 流水线 */
+.pipeline {
+  display: flex; align-items: stretch; gap: 8px;
+  flex-wrap: wrap;
+}
+.pl-stage {
+  flex: 1; min-width: 90px;
+  background: #0a0a0a;
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius);
+  padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+  transition: border-color 0.2s;
+}
+.pl-stage:hover { border-color: var(--green); }
+.pl-num { font-family: var(--mono); font-size: 9px; color: var(--green); letter-spacing: 1px; }
+.pl-name { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--gray-100); }
+.pl-sub { font-size: 9px; color: var(--gray-600); }
+.pl-arrow { align-self: center; color: var(--green); font-size: 14px; flex-shrink: 0; }
+
+/* 表格辅助 */
+.feed-type-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--gray-border);
+  border-radius: var(--radius);
+  font-size: 10px; color: var(--gray-400);
+  font-family: var(--mono);
+}
+.td-num { text-align: right; font-variant-numeric: tabular-nums; }
+.td-dim { color: var(--gray-600); font-size: 11px; }
+
 /* ═══ 数据表格（Adminator datatable 风格） ═══ */
 .table-toolbar {
   display: flex; gap: 10px; align-items: center;

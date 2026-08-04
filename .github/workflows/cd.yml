@@ -26,6 +26,7 @@ jobs:
           pip install -r backend/requirements.txt -r backend/requirements-build.txt
 
       - name: Create .env placeholder
+        shell: bash
         run: |
           echo "DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}" > backend/.env
           if [ -z "$(cat backend/.env | grep -o 'sk-')" ]; then

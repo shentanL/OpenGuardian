@@ -205,10 +205,14 @@ class TestUIFrontend(unittest.TestCase):
             self.assertIn(feature, bg, f"background.js 缺 {feature}")
 
     def test_background_js_syntax(self):
-        import subprocess
+        import subprocess, shutil
 
         bg = Path(__file__).resolve().parent.parent.parent / "frontend" / "background.js"
-        node = r"C:\Users\14845\AppData\Local\hermes\node\node.exe"
+        if not bg.exists():
+            self.skipTest("background.js 不存在，跳过 Node 语法检查")
+        node = shutil.which("node") or shutil.which("node.exe")
+        if not node:
+            self.skipTest("CI 环境无 Node，跳过语法检查")
         r = subprocess.run([node, "--check", "background.js"], capture_output=True, text=True, cwd=bg.parent)
         self.assertEqual(r.returncode, 0, r.stderr[:100])
 

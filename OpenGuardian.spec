@@ -28,7 +28,6 @@ _WEBVIEW_HOOKS = str(Path(_wv.__file__).parent / "__pyinstaller")
 _datas = [
     (str(FRONTEND), "frontend"),
     (str(KB_DATA), "backend/kb_data"),
-    (str(BASE / "backend" / ".env"), "backend"),
 ]
 if (BASE / "OpenGuardian.ico").exists():
     _datas.append((str(BASE / "OpenGuardian.ico"), "."))
